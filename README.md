@@ -2,6 +2,11 @@
 
 > Patterns for working with Phoenix in the age of LLMs
 
+## 📚 Patterns
+
+- [Hello](docs/patterns/hello.md)
+- [World](docs/patterns/world.md)
+
 ## Quick start
 
 To start your Phoenix server:
