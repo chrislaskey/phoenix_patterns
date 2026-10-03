@@ -1,0 +1,43 @@
+# Who must approve a pull request, by path. The last matching line wins for
+# each file, and every owner matched by the pull request must approve.
+#
+# This mirrors the review tiers in .app_checks.exs, which `mix app.checks`
+# uses to print the tier of a branch and to keep protected files alone in
+# their pull request. Keep the two files in step. See
+# docs/patterns/code-review.md.
+#
+# Replace @org/engineers and @org/architects with your teams. Make architects
+# members of engineers too, so one architect approval satisfies both lines.
+
+# standard: every file needs an engineer
+*                                        @org/engineers
+
+# low: no owner, so the one approval the branch rule requires can come from
+# the automated reviewer
+/lib/example_web/live/**/*.heex
+/lib/example_web/controllers/**/*.heex
+/docs/
+/README.md
+
+# high
+/lib/example_web.ex                      @org/architects
+/lib/example_web/components/             @org/architects
+/lib/example_web/router.ex               @org/architects
+/lib/example_web/endpoint.ex             @org/architects
+/lib/example/application.ex              @org/architects
+/config/                                 @org/architects
+/mix.exs                                 @org/architects
+/mix.lock                                @org/architects
+/.tool-versions                          @org/architects
+/test/support/                           @org/architects
+/.github/                                @org/architects
+
+# protected, also kept alone in their pull request by mix app.checks
+/AGENTS.md                               @org/architects
+/.github/CODEOWNERS                      @org/architects
+/.github/workflows/protected-*           @org/architects
+/.credo.exs                              @org/architects
+/.check.exs                              @org/architects
+/.app_checks.exs                         @org/architects
+/priv/checks/                            @org/architects
+/lib/mix/tasks/app.checks.ex             @org/architects

@@ -1,15 +1,22 @@
-//! Runs every check in `checks::all()` over the given paths (default `lib`).
+//! Runs every check in `checks::all()`.
 //!
-//! Fast pass first, printing findings as each file finishes. Then the slow
-//! pass over every file a check flagged as potential. Exits `1` when any
-//! finding is confirmed and `2` when the arguments are wrong.
+//! Branch checks run first, once, over what the branch changed compared
+//! with `--base`. Then source checks run over the given paths (default
+//! `lib`): fast pass first, printing findings as each file finishes, then
+//! the slow pass over every file a check flagged as potential. Exits `1`
+//! when any finding is confirmed and `2` when the arguments, the settings or
+//! git are wrong.
 //!
-//! Options, each repeatable:
+//! Options:
 //!
+//! - `--base REF` is what branch checks compare with, `origin/main` when not
+//!   given. Git is only read. Nothing is fetched or changed.
 //! - `--ignore NAME` skips directories called `NAME` wherever they appear.
 //! - `--disable NAME` skips the check called `NAME`.
+//! - `--set CHECK.KEY=VALUE` gives one setting to one check.
 //!
-//! `mix app.checks` fills these in from `.app_checks.exs`.
+//! The last three can be repeated. `mix app.checks` fills them all in from
+//! `.app_checks.exs`.
 
 mod check;
 
@@ -19,22 +26,39 @@ mod checks {
     include!(concat!(env!("OUT_DIR"), "/checks.rs"));
 }
 
+use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
+use std::process::{Command, ExitCode};
 
 use rayon::prelude::*;
 use walkdir::WalkDir;
 
-use check::{Check, Confidence, Finding, SourceFile};
+use check::{Branch, BranchCheck, Confidence, Finding, Kind, Settings, SourceCheck, SourceFile};
 
 const EXTENSIONS: &[&str] = &["ex", "exs", "heex"];
+const DEFAULT_BASE: &str = "origin/main";
 
-#[derive(Debug, Default)]
+#[derive(Debug, PartialEq, Eq)]
 struct Options {
     roots: Vec<PathBuf>,
     ignored_dirs: Vec<String>,
     disabled: Vec<String>,
+    base: String,
+    /// `(CHECK.KEY, VALUE)` pairs as given, split up by `settings_by_check`.
+    settings: Vec<(String, String)>,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            roots: Vec::new(),
+            ignored_dirs: Vec::new(),
+            disabled: Vec::new(),
+            base: DEFAULT_BASE.to_string(),
+            settings: Vec::new(),
+        }
+    }
 }
 
 /// A (check, file) pair the fast pass could not settle.
@@ -47,25 +71,50 @@ struct Flagged {
 }
 
 fn main() -> ExitCode {
-    let options = match parse_args(std::env::args().skip(1)) {
-        Ok(options) => options,
+    match run() {
+        Ok(0) => ExitCode::SUCCESS,
+        Ok(_) => ExitCode::FAILURE,
         Err(message) => {
             eprintln!("{message}");
-            return ExitCode::from(2);
+            ExitCode::from(2)
         }
-    };
+    }
+}
 
-    let checks = match select_checks(checks::all(), &options.disabled) {
-        Ok(checks) => checks,
-        Err(message) => {
-            eprintln!("{message}");
-            return ExitCode::from(2);
+/// Runs everything and returns how many findings were confirmed, or the
+/// message to print before exiting with `2`.
+fn run() -> Result<usize, String> {
+    let options = parse_args(std::env::args().skip(1))?;
+    let all = checks::all();
+    let settings = settings_by_check(&all, &options.settings)?;
+    let checks = select_checks(all, &options.disabled)?;
+
+    let mut source_checks: Vec<&dyn SourceCheck> = Vec::new();
+    let mut branch_checks: Vec<&dyn BranchCheck> = Vec::new();
+    for check in &checks {
+        match check {
+            Kind::Source(check) => source_checks.push(*check),
+            Kind::Branch(check) => branch_checks.push(*check),
         }
-    };
+    }
+
+    let mut confirmed = 0;
+
+    if !branch_checks.is_empty() {
+        let branch = collect_branch(&options.base, Path::new("."))?;
+        let none = Settings::default();
+        for check in &branch_checks {
+            let settings = settings.get(check.name()).unwrap_or(&none);
+            let mut findings = check
+                .run(&branch, settings)
+                .map_err(|message| format!("{}: {message}", check.name()))?;
+            confirmed += report(&mut io::stdout().lock(), None, check.name(), &mut findings);
+        }
+    }
 
     let files = collect_files(&options.roots, &options.ignored_dirs);
 
-    // Fast pass: every check on every file, in parallel, printing per file.
+    // Fast pass: every source check on every file, in parallel, printing per file.
     let (fast_confirmed, flagged) = files
         .par_iter()
         .enumerate()
@@ -74,9 +123,9 @@ fn main() -> ExitCode {
             let mut flagged = Vec::new();
             let mut out = io::stdout().lock();
 
-            for (check_index, check) in checks.iter().enumerate() {
+            for (check_index, check) in source_checks.iter().enumerate() {
                 let mut findings = check.fast(file);
-                confirmed += report(&mut out, file, *check, &mut findings);
+                confirmed += report(&mut out, Some(&file.path), check.name(), &mut findings);
 
                 if findings
                     .iter()
@@ -105,7 +154,7 @@ fn main() -> ExitCode {
     let slow_confirmed: usize = flagged
         .par_iter()
         .map(|flag| {
-            let (check, file) = (checks[flag.check], &files[flag.file]);
+            let (check, file) = (source_checks[flag.check], &files[flag.file]);
             let mut findings = check.slow(file);
             debug_assert!(
                 findings
@@ -113,11 +162,17 @@ fn main() -> ExitCode {
                     .all(|f| f.confidence == Confidence::Confirmed)
             );
             findings.retain(|f| !flag.reported.contains(f));
-            report(&mut io::stdout().lock(), file, check, &mut findings)
+            report(
+                &mut io::stdout().lock(),
+                Some(&file.path),
+                check.name(),
+                &mut findings,
+            )
         })
         .sum();
 
-    let total = fast_confirmed + slow_confirmed;
+    confirmed += fast_confirmed + slow_confirmed;
+
     let disabled = match options.disabled.len() {
         0 => String::new(),
         n => format!(", {n} disabled"),
@@ -127,14 +182,10 @@ fn main() -> ExitCode {
         checks.len(),
         files.len(),
         flagged.len(),
-        total
+        confirmed
     );
 
-    if total == 0 {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
-    }
+    Ok(confirmed)
 }
 
 fn parse_args(args: impl Iterator<Item = String>) -> Result<Options, String> {
@@ -143,11 +194,19 @@ fn parse_args(args: impl Iterator<Item = String>) -> Result<Options, String> {
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--base" => options.base = value_for(&mut args, &arg)?,
             "--ignore" => options.ignored_dirs.push(value_for(&mut args, &arg)?),
             "--disable" => options.disabled.push(value_for(&mut args, &arg)?),
+            "--set" => {
+                let setting = value_for(&mut args, &arg)?;
+                let (key, value) = setting
+                    .split_once('=')
+                    .ok_or_else(|| format!("--set {setting} must be CHECK.KEY=VALUE"))?;
+                options.settings.push((key.to_string(), value.to_string()));
+            }
             flag if flag.starts_with("--") => {
                 return Err(format!(
-                    "unknown option {flag}; the options are --ignore NAME and --disable NAME"
+                    "unknown option {flag}; the options are --base REF, --ignore NAME, --disable NAME and --set CHECK.KEY=VALUE"
                 ));
             }
             path => options.roots.push(PathBuf::from(path)),
@@ -163,21 +222,17 @@ fn parse_args(args: impl Iterator<Item = String>) -> Result<Options, String> {
 
 fn value_for(args: &mut impl Iterator<Item = String>, flag: &str) -> Result<String, String> {
     args.next()
-        .ok_or_else(|| format!("{flag} needs a name after it"))
+        .ok_or_else(|| format!("{flag} needs a value after it"))
 }
 
 /// Every check except the disabled ones. A disabled name that matches no
 /// check is an error, so a typo cannot quietly disable nothing.
-fn select_checks<'a>(
-    all: Vec<&'a dyn Check>,
-    disabled: &[String],
-) -> Result<Vec<&'a dyn Check>, String> {
+fn select_checks(all: Vec<Kind>, disabled: &[String]) -> Result<Vec<Kind>, String> {
     for name in disabled {
         if !all.iter().any(|check| check.name() == name) {
-            let names: Vec<&str> = all.iter().map(|check| check.name()).collect();
             return Err(format!(
                 "cannot disable {name}, there is no such check; the checks are: {}",
-                names.join(", ")
+                names(&all)
             ));
         }
     }
@@ -188,11 +243,65 @@ fn select_checks<'a>(
         .collect())
 }
 
+/// The settings for each check, by check name, with the check name removed
+/// from every key. A setting for a check that does not exist, or one the
+/// check does not accept, is an error, so a typo cannot quietly set nothing.
+fn settings_by_check(
+    all: &[Kind],
+    raw: &[(String, String)],
+) -> Result<HashMap<&'static str, Settings>, String> {
+    let mut grouped: HashMap<&'static str, Vec<(String, String)>> = HashMap::new();
+
+    for (key, value) in raw {
+        let (name, rest) = key
+            .split_once('.')
+            .ok_or_else(|| format!("--set {key}={value} must be CHECK.KEY=VALUE"))?;
+        let check = all
+            .iter()
+            .find(|check| check.name() == name)
+            .ok_or_else(|| {
+                format!(
+                    "cannot set {key}, there is no check called {name}; the checks are: {}",
+                    names(all)
+                )
+            })?;
+        let accepted = check.settings();
+        if !Settings::accepts(accepted, rest) {
+            return Err(if accepted.is_empty() {
+                format!("cannot set {key}, {name} takes no settings")
+            } else {
+                format!(
+                    "cannot set {key}, {name} does not accept {rest}; it accepts: {}",
+                    accepted.join(", ")
+                )
+            });
+        }
+        grouped
+            .entry(check.name())
+            .or_default()
+            .push((rest.to_string(), value.clone()));
+    }
+
+    Ok(grouped
+        .into_iter()
+        .map(|(name, entries)| (name, Settings::new(entries)))
+        .collect())
+}
+
+fn names(checks: &[Kind]) -> String {
+    checks
+        .iter()
+        .map(|check| check.name())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 /// Prints `findings` in line order and returns how many were confirmed.
+/// `file` is the file the findings are about when they do not say themselves.
 fn report(
     out: &mut impl Write,
-    file: &SourceFile,
-    check: &dyn Check,
+    file: Option<&Path>,
+    name: &str,
     findings: &mut [Finding],
 ) -> usize {
     findings.sort_by_key(|f| f.line);
@@ -205,17 +314,72 @@ fn report(
                 "confirmed"
             }
             Confidence::Potential => "potential",
+            Confidence::Info => "info",
         };
-        let _ = writeln!(
-            out,
-            "{}:{}: {} [{}, {label}]",
-            file.path.display(),
-            finding.line,
-            finding.message,
-            check.name()
-        );
+        let location = match (finding.path.as_deref().or(file), finding.line) {
+            (Some(path), Some(line)) => format!("{}:{line}: ", path.display()),
+            (Some(path), None) => format!("{}: ", path.display()),
+            (None, _) => String::new(),
+        };
+        let _ = writeln!(out, "{location}{} [{name}, {label}]", finding.message);
     }
     confirmed
+}
+
+/// Every path the branch changed compared with `base`, in the repository at
+/// `dir`: commits since the branch left the base, staged and unstaged edits,
+/// and untracked files that are not ignored. A rename counts as both paths.
+/// Git is only read. Nothing is fetched or changed.
+fn collect_branch(base: &str, dir: &Path) -> Result<Branch, String> {
+    let merge_base = git(dir, &["merge-base", base, "HEAD"]).map_err(|error| {
+        format!(
+            "could not find where the branch left {base}: {error}\n\
+             Fetch the base branch, pass --base REF, or set base: in .app_checks.exs"
+        )
+    })?;
+    let merge_base = String::from_utf8_lossy(&merge_base).trim().to_string();
+
+    let changed = git(
+        dir,
+        &["diff", "--name-only", "--no-renames", "-z", &merge_base],
+    )?;
+    let untracked = git(dir, &["ls-files", "--others", "--exclude-standard", "-z"])?;
+
+    let mut paths: Vec<PathBuf> = [changed, untracked]
+        .iter()
+        .flat_map(|output| {
+            output
+                .split(|byte| *byte == 0)
+                .filter(|path| !path.is_empty())
+                .map(|path| PathBuf::from(String::from_utf8_lossy(path).into_owned()))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    paths.sort();
+    paths.dedup();
+
+    Ok(Branch {
+        base: base.to_string(),
+        paths,
+    })
+}
+
+fn git(dir: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .map_err(|error| format!("could not run git: {error}"))?;
+
+    if output.status.success() {
+        Ok(output.stdout)
+    } else {
+        Err(format!(
+            "git {} failed: {}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr).trim()
+        ))
+    }
 }
 
 /// Every readable UTF-8 source file under `roots` with a recognised extension,
@@ -268,11 +432,13 @@ mod tests {
     }
 
     #[test]
-    fn defaults_to_lib_with_nothing_ignored_or_disabled() {
+    fn defaults_to_lib_and_origin_main_with_nothing_ignored_disabled_or_set() {
         let options = parse(&[]).unwrap();
         assert_eq!(options.roots, vec![PathBuf::from("lib")]);
+        assert_eq!(options.base, "origin/main");
         assert!(options.ignored_dirs.is_empty());
         assert!(options.disabled.is_empty());
+        assert!(options.settings.is_empty());
     }
 
     #[test]
@@ -283,8 +449,14 @@ mod tests {
             "lib",
             "--disable",
             "a",
+            "--base",
+            "origin/develop",
+            "--set",
+            "review_tier.high=config/**",
             "--ignore",
             "_build",
+            "--set",
+            "review_tier.default=standard",
             "test",
         ])
         .unwrap();
@@ -294,16 +466,29 @@ mod tests {
         );
         assert_eq!(options.ignored_dirs, vec!["deps", "_build"]);
         assert_eq!(options.disabled, vec!["a"]);
+        assert_eq!(options.base, "origin/develop");
+        assert_eq!(
+            options.settings,
+            vec![
+                ("review_tier.high".to_string(), "config/**".to_string()),
+                ("review_tier.default".to_string(), "standard".to_string())
+            ]
+        );
     }
 
     #[test]
-    fn rejects_unknown_options_and_missing_values() {
+    fn rejects_unknown_options_and_missing_or_malformed_values() {
         assert!(
             parse(&["--nope"])
                 .unwrap_err()
                 .contains("unknown option --nope")
         );
-        assert!(parse(&["--disable"]).unwrap_err().contains("needs a name"));
+        assert!(parse(&["--disable"]).unwrap_err().contains("needs a value"));
+        assert!(
+            parse(&["--set", "review_tier.high"])
+                .unwrap_err()
+                .contains("must be CHECK.KEY=VALUE")
+        );
     }
 
     #[test]
@@ -313,11 +498,125 @@ mod tests {
             .unwrap();
         assert!(error.contains("no such check"));
         assert!(error.contains("raw_html_tags"));
+        assert!(error.contains("review_tier"));
     }
 
     #[test]
     fn disabling_a_check_removes_it() {
         let selected = select_checks(checks::all(), &["raw_html_tags".to_string()]).unwrap();
         assert!(selected.iter().all(|check| check.name() != "raw_html_tags"));
+    }
+
+    fn set(entries: &[(&str, &str)]) -> Vec<(String, String)> {
+        entries
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
+    }
+
+    #[test]
+    fn settings_are_grouped_by_check_with_the_check_name_removed() {
+        let settings = settings_by_check(
+            &checks::all(),
+            &set(&[
+                ("review_tier.high", "config/**"),
+                ("review_tier.protected.agents", "AGENTS.md"),
+            ]),
+        )
+        .unwrap();
+        let review_tier = &settings["review_tier"];
+        assert_eq!(review_tier.many("high"), vec!["config/**"]);
+        assert_eq!(
+            review_tier.under("protected"),
+            vec![("agents", "AGENTS.md")]
+        );
+    }
+
+    #[test]
+    fn a_setting_for_an_unknown_check_or_key_is_an_error() {
+        let all = checks::all();
+
+        let error = settings_by_check(&all, &set(&[("nope.key", "v")])).unwrap_err();
+        assert!(error.contains("no check called nope"));
+
+        let error = settings_by_check(&all, &set(&[("review_tier.base", "v")])).unwrap_err();
+        assert!(error.contains("does not accept base"));
+        assert!(error.contains("protected.*"));
+
+        let error = settings_by_check(&all, &set(&[("raw_html_tags.x", "v")])).unwrap_err();
+        assert!(error.contains("takes no settings"));
+
+        let error = settings_by_check(&all, &set(&[("review_tier", "v")])).unwrap_err();
+        assert!(error.contains("must be CHECK.KEY=VALUE"));
+    }
+
+    /// A throwaway repository with one commit on a branch called `base`, and
+    /// on top of it: a commit changing `b.txt`, an unstaged edit to `a.txt`,
+    /// a renamed `r.txt`, and an untracked `c.txt`.
+    fn temp_repo(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("checks-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let sh = |args: &[&str]| {
+            let status = Command::new("git")
+                .args([
+                    "-c",
+                    "user.name=t",
+                    "-c",
+                    "user.email=t@t",
+                    "-c",
+                    "commit.gpgsign=false",
+                ])
+                .args(args)
+                .current_dir(&dir)
+                .output()
+                .unwrap();
+            assert!(
+                status.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&status.stderr)
+            );
+        };
+        let write = |name: &str, contents: &str| std::fs::write(dir.join(name), contents).unwrap();
+
+        sh(&["init", "-q"]);
+        write("a.txt", "a\n");
+        write("b.txt", "b\n");
+        write("r.txt", "r\n");
+        sh(&["add", "."]);
+        sh(&["commit", "-q", "-m", "first"]);
+        sh(&["branch", "base"]);
+
+        write("b.txt", "b2\n");
+        sh(&["mv", "r.txt", "renamed.txt"]);
+        sh(&["commit", "-q", "-a", "-m", "second"]);
+        write("a.txt", "a2\n");
+        write("c.txt", "c\n");
+
+        dir
+    }
+
+    #[test]
+    fn the_branch_is_commits_edits_renames_and_untracked_files_since_the_base() {
+        let dir = temp_repo("branch");
+        let branch = collect_branch("base", &dir).unwrap();
+        assert_eq!(branch.base, "base");
+        assert_eq!(
+            branch.paths,
+            ["a.txt", "b.txt", "c.txt", "r.txt", "renamed.txt"]
+                .map(PathBuf::from)
+                .to_vec()
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_missing_base_is_an_error_that_says_what_to_do() {
+        let dir = temp_repo("missing-base");
+        let error = collect_branch("origin/nope", &dir).unwrap_err();
+        assert!(error.contains("could not find where the branch left origin/nope"));
+        assert!(error.contains("--base REF"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

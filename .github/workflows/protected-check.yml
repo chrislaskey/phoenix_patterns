@@ -1,0 +1,87 @@
+name: Check
+
+# Runs `mix check`, the same command as before a commit, so CI and a laptop
+# agree on what passes. It compiles with warnings as errors, checks
+# formatting, runs Credo, the tests, the gettext and dependency checks, and
+# the custom checks in priv/checks.
+#
+# The name starts with protected- because the custom checks include the
+# review tier check, which keeps protected files alone in their pull request.
+# A workflow that enforces a rule must itself be protected, so
+# .app_checks.exs and CODEOWNERS list protected-*.yml. See
+# docs/patterns/code-review.md.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same branch supersedes the running one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MIX_ENV: test
+  # The review tier check compares the branch with the pull request's base,
+  # so a pull request opened against another branch is measured against that
+  # branch and not against main. Empty on a push to main, where the default
+  # in .app_checks.exs applies. Read by .check.exs.
+  APP_CHECKS_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
+
+jobs:
+  check:
+    name: mix check
+    runs-on: ubuntu-latest
+
+    steps:
+      # The whole history, so the base branch is there to compare with.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Elixir
+        id: beam
+        uses: erlef/setup-beam@v1
+        with:
+          version-file: .tool-versions
+          version-type: strict
+
+      - name: Read the Rust version
+        id: rust
+        run: echo "version=$(awk '$1 == "rust" { print $2 }' .tool-versions)" >> "$GITHUB_OUTPUT"
+
+      # Builds the custom checks in priv/checks
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.rust.outputs.version }}
+
+      - name: Cache the custom checks build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: priv/checks
+
+      - name: Cache deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            mix-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
+
+      - name: Get dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      # Every tool runs even when an earlier one failed, so one run reports
+      # everything. See .check.exs.
+      - name: mix check
+        run: mix check

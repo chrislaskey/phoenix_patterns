@@ -7,16 +7,16 @@
 //! Slow pass: reads the whole tag name after `<` and confirms only exact
 //! matches. This stands in for a real parser.
 
-use crate::check::{Check, Finding, SourceFile};
+use crate::check::{Finding, Kind, SourceCheck, SourceFile};
 
 pub struct RawHtmlTags;
 
 /// The check this file contributes. Every file in `src/checks/` exports one.
-pub const CHECK: &dyn Check = &RawHtmlTags;
+pub const CHECK: Kind = Kind::Source(&RawHtmlTags);
 
 const TAGS: &[&str] = &["p", "h1", "h2", "h3", "h4", "h5", "h6"];
 
-impl Check for RawHtmlTags {
+impl SourceCheck for RawHtmlTags {
     fn name(&self) -> &'static str {
         "raw_html_tags"
     }

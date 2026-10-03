@@ -39,6 +39,7 @@ custom checks, you can also add custom `credo` rules where appropriate.
 - [ExCheck config](../../.check.exs)
 - [Credo config](../../.credo.exs)
 - [Custom checks config](../../.app_checks.exs)
+- [CI workflow that runs the same command](../../.github/workflows/protected-check.yml)
 
 ### One command
 
@@ -73,6 +74,14 @@ mix app.checks lib/my_app_web/components/layouts.ex
 
 **Note**: an `.app_checks.exs` file can be used to configure the custom app checks.
 
+### The same command in CI
+
+CI runs `mix check` too, in `.github/workflows/protected-check.yml`, so a
+run that passes on a laptop passes in CI and the other way round. The
+workflow sets up Elixir and Rust from `.tool-versions`, caches `deps`,
+`_build` and the Rust build, and runs the one command. The `protected-`
+prefix is explained in the [Code Review](code-review.md) pattern.
+
 ## Adopting this pattern
 
 1. Add `credo` and `ex_check` to `deps` in `mix.exs`, both with
@@ -87,3 +96,5 @@ mix app.checks lib/my_app_web/components/layouts.ex
 5. Run `mix check`. A freshly generated application needs two small fixes
    before it is clean: run `mix gettext.extract` so the `.pot` files exist,
    and fix the handful of Credo findings in the generated code.
+6. Copy `.github/workflows/protected-check.yml` and pin `erlang`, `elixir`
+   and `rust` in `.tool-versions`, which both the workflow and `asdf` read.

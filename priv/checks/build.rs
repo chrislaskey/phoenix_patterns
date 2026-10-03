@@ -2,8 +2,9 @@
 //! check is just adding a file there.
 //!
 //! Every `.rs` file in that directory is a check. It must export
-//! `pub const CHECK: &dyn Check`, and its `name()` must equal the file name
-//! without `.rs`, which a generated test enforces. The output is included by
+//! `pub const CHECK: Kind`, either a source check or a branch check, and its
+//! `name()` must equal the file name without `.rs`, which a generated test
+//! enforces. The output is included by
 //! `main.rs` as the `checks` module.
 
 use std::env;
@@ -39,7 +40,7 @@ fn main() {
     }
 
     out += "\n/// Every check, in file name order.\n";
-    out += "pub fn all() -> Vec<&'static dyn crate::check::Check> {\n    vec![\n";
+    out += "pub fn all() -> Vec<crate::check::Kind> {\n    vec![\n";
     for name in &names {
         out += &format!("        {name}::CHECK,\n");
     }
