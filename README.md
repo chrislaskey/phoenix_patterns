@@ -7,6 +7,7 @@
 - [Code Linting](docs/patterns/code-linting.md)
 - [Code Review](docs/patterns/code-review.md)
 - [Code Generators](docs/patterns/code-generators.md)
+- [Common UI](docs/patterns/common-ui.md)
 
 ## Quick start
 

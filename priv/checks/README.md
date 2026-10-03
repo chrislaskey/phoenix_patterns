@@ -40,7 +40,7 @@ config grows.
 
 Every file in `priv/checks/src/checks` is a check. Dropping a new file in is
 enough to include it, and `disabled_checks` lists the ones to skip by file
-name, as in `[:raw_html_tags]`. Disabling a check that does not exist is an
+name, as in `[:core_component_tags]`. Disabling a check that does not exist is an
 error, so a typo cannot quietly disable nothing. The same goes for a setting
 a check does not accept.
 
@@ -61,8 +61,8 @@ Four options. All but `--base` can be repeated:
 ```sh
 ./priv/checks/target/release/checks --base origin/develop lib             # what branch checks compare with
 ./priv/checks/target/release/checks --ignore deps --ignore _build lib     # skip directories with these names
-./priv/checks/target/release/checks --disable raw_html_tags lib           # skip a check
-./priv/checks/target/release/checks --set review_tier.low='docs/**' lib   # one setting for one check
+./priv/checks/target/release/checks --disable core_component_tags lib          # skip a check
+./priv/checks/target/release/checks --set core_component_tags.paths=lib/my_app_web/components/core_components.ex lib # one setting for one check
 ```
 
 Day to day, run through Mix instead. `mix app.checks` builds first, reads
@@ -87,8 +87,8 @@ cargo test --manifest-path priv/checks/Cargo.toml
 One line per finding. Source checks give a file and a line:
 
 ```
-lib/example_web/controllers/page_html/home.html.heex:59: <p> is a raw tag, use <.p> from CoreComponents [raw_html_tags, confirmed]
-lib/example_web/controllers/page_html/home.html.heex:10: <p may be a raw tag [raw_html_tags, potential]
+lib/example_web/controllers/page_html/home.html.heex:12: <input> is a raw tag, use <.input> from ExampleWeb.CoreComponents [core_component_tags, confirmed]
+lib/example_web/components/layouts.ex:134: <button> may be a raw tag [core_component_tags, potential]
 ```
 
 A `potential` line means the slow pass will look at that file. If nothing
@@ -113,14 +113,18 @@ check, found by `build.rs` at compile time, so there is no list to edit.
    generated test fails the build if it does not.
 2. Export it: `pub const CHECK: Kind = Kind::Source(&MyCheck);` or
    `Kind::Branch(&MyCheck)`.
-3. Add a `#[cfg(test)] mod tests` at the bottom of the file. The helpers in
+3. If the check takes settings, list them in `settings`. A branch check
+   reads them in `run`. A source check reads them in `prepare`, which runs
+   once before any file is scanned, and keeps what the passes need.
+4. Add a `#[cfg(test)] mod tests` at the bottom of the file. The helpers in
    `check::testing` build a file from a snippet (`source`), a branch from a
    list of paths (`branch`), settings from pairs (`settings`), pick out line
    numbers or messages by confidence (`lines`, `messages`), and run both
    passes of a source check the way the runner does (`run`).
 
-`src/checks/raw_html_tags.rs` is a worked source check and
-`src/checks/review_tier.rs` a worked branch check with settings.
+`src/checks/core_component_tags.rs` is a worked source check with settings and a
+`prepare` step, and `src/checks/review_tier.rs` a worked branch check with
+settings.
 
 ## Additional links
 

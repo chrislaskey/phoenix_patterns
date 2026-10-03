@@ -98,11 +98,20 @@ fn run() -> Result<usize, String> {
         }
     }
 
+    let none = Settings::default();
+
+    // Prepare before anything prints, so a bad setting stops the run cleanly.
+    for check in &source_checks {
+        let settings = settings.get(check.name()).unwrap_or(&none);
+        check
+            .prepare(settings)
+            .map_err(|message| format!("{}: {message}", check.name()))?;
+    }
+
     let mut confirmed = 0;
 
     if !branch_checks.is_empty() {
         let branch = collect_branch(&options.base, Path::new("."))?;
-        let none = Settings::default();
         for check in &branch_checks {
             let settings = settings.get(check.name()).unwrap_or(&none);
             let mut findings = check
@@ -497,14 +506,18 @@ mod tests {
             .err()
             .unwrap();
         assert!(error.contains("no such check"));
-        assert!(error.contains("raw_html_tags"));
+        assert!(error.contains("core_component_tags"));
         assert!(error.contains("review_tier"));
     }
 
     #[test]
     fn disabling_a_check_removes_it() {
-        let selected = select_checks(checks::all(), &["raw_html_tags".to_string()]).unwrap();
-        assert!(selected.iter().all(|check| check.name() != "raw_html_tags"));
+        let selected = select_checks(checks::all(), &["core_component_tags".to_string()]).unwrap();
+        assert!(
+            selected
+                .iter()
+                .all(|check| check.name() != "core_component_tags")
+        );
     }
 
     fn set(entries: &[(&str, &str)]) -> Vec<(String, String)> {
@@ -543,8 +556,9 @@ mod tests {
         assert!(error.contains("does not accept base"));
         assert!(error.contains("protected.*"));
 
-        let error = settings_by_check(&all, &set(&[("raw_html_tags.x", "v")])).unwrap_err();
-        assert!(error.contains("takes no settings"));
+        let error = settings_by_check(&all, &set(&[("core_component_tags.x", "v")])).unwrap_err();
+        assert!(error.contains("core_component_tags does not accept x"));
+        assert!(error.contains("paths"));
 
         let error = settings_by_check(&all, &set(&[("review_tier", "v")])).unwrap_err();
         assert!(error.contains("must be CHECK.KEY=VALUE"));

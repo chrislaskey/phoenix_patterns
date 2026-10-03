@@ -6,8 +6,9 @@ finds, and exits with an error code if anything is wrong.
 
 There are two kinds of check, named after what they are given:
 
-- A **source check** is given one source file, such as "templates must not
-  use a raw `<p>` tag". It reads every source file once and runs on each.
+- A **source check** is given one source file, such as "templates must use
+  `<.button>` rather than a raw `<button>`". It reads every source file once
+  and runs on each.
 - A **branch check** is given the branch: every path it changed compared
   with a base branch, such as "a change to `AGENTS.md` must be the only
   change". It runs once.
@@ -30,32 +31,31 @@ Branch checks run first, once. Then source checks, in two passes:
 Findings print as soon as each file finishes, so you can start fixing the first
 one while the rest of the run continues. Files run in parallel.
 
-Here is a run against the example app on a branch that changed one context
-module, trimmed to one potential finding per kind:
+Here is a run on a branch that changed the layout module, where a doc string
+mentions `<button>` on line 24 and a template uses one on line 134, and a
+page template uses a raw `<input>`:
 
 ```
-lib/example/orders.ex: standard [review_tier, info]
-review tier: standard, 1 file(s) changed against origin/main [review_tier, info]
-lib/example_web/controllers/page_html/home.html.heex:10: <p may be a raw tag [raw_html_tags, potential]
-lib/example_web/controllers/page_html/home.html.heex:50: <h may be a raw tag [raw_html_tags, potential]
-lib/example_web/controllers/page_html/home.html.heex:59: <p> is a raw tag, use <.p> from CoreComponents [raw_html_tags, confirmed]
-lib/example_web/controllers/page_html/home.html.heex:62: <p> is a raw tag, use <.p> from CoreComponents [raw_html_tags, confirmed]
-lib/example_web/components/layouts/root.html.heex:2: <h may be a raw tag [raw_html_tags, potential]
-lib/example_web/controllers/page_html/home.html.heex:50: <h1> is a raw tag, use <.h1> from CoreComponents [raw_html_tags, confirmed]
-2 check(s) over 17 file(s), 2 slow pass(es), 3 confirmed finding(s)
+lib/example_web/components/layouts.ex: high [review_tier, info]
+review tier: high, 1 file(s) changed against origin/main [review_tier, info]
+lib/example_web/components/layouts.ex:24: <button> may be a raw tag [core_component_tags, potential]
+lib/example_web/components/layouts.ex:134: <button> may be a raw tag [core_component_tags, potential]
+lib/example_web/controllers/page_html/home.html.heex:12: <input> is a raw tag, use <.input> from ExampleWeb.CoreComponents [core_component_tags, confirmed]
+lib/example_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from ExampleWeb.CoreComponents [core_component_tags, confirmed]
+2 check(s) over 18 file(s), 1 slow pass(es), 2 confirmed finding(s)
 ```
 
 Each line is `file:line: message [check name, confidence]`. A branch check
 has no line to give, so its lines are `file: message` or just `message`.
 
 Read it like this. The first two lines are the branch check: the one changed
-file is in the `standard` tier, so the branch is too. They are `info`, which
-never fails the run. Line 10 holds `<path`, which the fast pass could not tell
-apart from `<p`, so it reported it as potential. Lines 59 and 62 hold
-`<p class=`, which the fast pass could confirm on its own. Line 50 holds
-`<h1`, reported as potential by the fast pass and then confirmed by the slow
-pass. Line 2 of the layout holds `<html`. The slow pass looked at it and said
-nothing, which means it was cleared.
+file is in the `high` tier, so the branch is too. They are `info`, which
+never fails the run. The `.heex` file is all template, so its `<input>` is
+confirmed by the fast pass on its own. In the `.ex` file the fast pass cannot
+tell a template from a doc string, so it reports both mentions of `<button>`
+as potential. The slow pass reads only the `~H` templates in that file. It
+confirms line 134 and says nothing about line 24, which means it was
+cleared.
 
 The last line is a summary. The exit code is `1` if any finding was confirmed
 and `0` otherwise. Potential findings that the slow pass cleared do not fail
@@ -129,8 +129,8 @@ Every key in the file is optional. These are the defaults:
 ```
 
 Paths on the command line replace `paths` for that run. `disabled_checks`
-names checks by file name, so `[:raw_html_tags]` turns off
-`src/checks/raw_html_tags.rs`.
+names checks by file name, so `[:core_component_tags]` turns off
+`src/checks/core_component_tags.rs`.
 
 Any other key names a check and holds its settings. See "Settings" below.
 
@@ -145,7 +145,8 @@ generates the `checks` module from it, so adding a check is adding a file.
 Each file exports the check as `CHECK`, wrapped in `Kind::Source` or
 `Kind::Branch` from `priv/checks/src/check.rs`.
 
-A source check implements the `SourceCheck` trait, which has three functions:
+A source check implements the `SourceCheck` trait, which has three functions
+to write:
 
 - `name` returns a short label shown next to each finding. It must be the
   file name without `.rs`, because that is also how `disabled_checks` refers
@@ -153,6 +154,9 @@ A source check implements the `SourceCheck` trait, which has three functions:
 - `fast` takes a file and returns findings. Use `Finding::confirmed` when sure
   and `Finding::potential` when not.
 - `slow` takes a file and returns only `Finding::confirmed` findings.
+
+And two more for a check that takes settings, `settings` and `prepare`. See
+"Settings" below.
 
 Here is a complete check that forbids `IO.inspect` in `lib/`:
 
@@ -263,6 +267,14 @@ earlier one. `many(key)` is every value. `under(prefix)` is every key below
 `prefix.` with the prefix removed, which is how `protected.agents` and
 `protected.lint_config` become named groups.
 
+A branch check gets its `Settings` in `run`. A source check gets them in
+`prepare`, which the runner calls once, before any file is scanned and before
+anything prints. The check reads what it needs there and keeps it for the
+passes. `priv/checks/src/checks/core_component_tags.rs` reads the components
+modules in `prepare`, builds one regular expression from their function
+names, and keeps both in a `OnceLock`. An `Err` from `prepare` stops the run with
+exit code `2`, the same as from `run`.
+
 In `.app_checks.exs` the settings are a keyword list under the check's name.
 The Mix task flattens it: a list gives the key once per element and a nested
 keyword list adds a segment.
@@ -352,9 +364,14 @@ cargo test --manifest-path priv/checks/Cargo.toml
 - **Write the message as an instruction.** Say what to use instead, as in
   `use <.p> from CoreComponents`. The reader may be a person or a tool fixing
   the code without any other context.
-- **Skip files early.** If a check only applies to templates, return an empty
-  list for everything else before doing any work. See `is_template` in
-  `priv/checks/src/checks/raw_html_tags.rs`.
+- **Skip files early.** If a check only applies to some files, return an
+  empty list for the rest before doing any work. See `is_module` in
+  `priv/checks/src/checks/core_component_tags.rs`, which compares file names
+  before it touches the disk.
+- **Do the expensive work once.** A check that reads a module or builds a
+  regular expression does it in `prepare`, not in `fast`, which runs on
+  every file. One expression that matches every tag at once is one pass
+  over each file however many tags there are.
 - **Refuse bad settings loudly.** Return an error from `run` for a value you
   cannot use, naming the setting, rather than falling back to a default. A
   check that quietly checks nothing is worse than no check.
@@ -365,11 +382,11 @@ cargo test --manifest-path priv/checks/Cargo.toml
 
 | Path | What it is |
 |---|---|
-| `priv/checks/Cargo.toml` | The Rust project. Three dependencies: `rayon` for running files in parallel, `walkdir` for finding files, `globset` for matching paths against patterns. |
-| `priv/checks/src/main.rs` | The runner. Parses the options, collects the branch from git and the files from disk, runs branch checks, then the fast and slow passes, then prints the summary and sets the exit code. |
+| `priv/checks/Cargo.toml` | The Rust project. Four dependencies: `rayon` for running files in parallel, `walkdir` for finding files, `globset` for matching paths against patterns, `regex` for matching text. |
+| `priv/checks/src/main.rs` | The runner. Parses the options, prepares the source checks, collects the branch from git and the files from disk, runs branch checks, then the fast and slow passes, then prints the summary and sets the exit code. |
 | `priv/checks/src/check.rs` | The `SourceCheck` and `BranchCheck` traits, the `Kind` enum, the `Finding`, `SourceFile`, `Branch` and `Settings` types, and the `testing` helpers. |
 | `priv/checks/build.rs` | Runs at compile time. Lists `src/checks/`, generates the `checks` module with `all()`, and a test that each check's `name` matches its file name. |
-| `priv/checks/src/checks/raw_html_tags.rs` | A worked source check. |
+| `priv/checks/src/checks/core_component_tags.rs` | A worked source check with settings and a `prepare` step. See the [Common UI](../patterns/common-ui.md) pattern. |
 | `priv/checks/src/checks/review_tier.rs` | A worked branch check with settings. See the [Code Review](../patterns/code-review.md) pattern. |
 | `priv/checks/README.md` | The short version of this guide, kept next to the code. |
 | `lib/mix/tasks/app.checks.ex` | The Mix task. Builds the program with cargo, turns `.app_checks.exs` into options, runs it, and fails when a finding is confirmed. |

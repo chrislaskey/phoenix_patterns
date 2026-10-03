@@ -35,8 +35,8 @@ defmodule Mix.Tasks.App.Checks do
       ]
 
   Every file in `priv/checks/src/checks` is a check. `disabled_checks` names
-  the ones to skip by file name, so `[:raw_html_tags]` turns off
-  `raw_html_tags.rs`. Naming a check that does not exist is an error.
+  the ones to skip by file name, so `[:core_component_tags]` turns off
+  `core_component_tags.rs`. Naming a check that does not exist is an error.
 
   Any other key is the name of a check and holds that check's settings as a
   keyword list. Each setting becomes a `--set check.key=value` flag. A list

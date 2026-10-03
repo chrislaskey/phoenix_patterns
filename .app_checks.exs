@@ -9,12 +9,22 @@
   # Directory names skipped wherever they appear under those paths
   paths_to_ignore: ["_build", "deps", "node_modules"],
   # Every file in priv/checks/src/checks is a check unless it is named here,
-  # for example `[:raw_html_tags]`
+  # for example `[:core_component_tags]`
   disabled_checks: [],
   # What the branch checks compare the current branch with, at the point the
   # branch left it. Only read, never fetched. `mix app.checks --base REF`
   # overrides it for one run, for a branch that builds on another branch.
   base: "origin/main",
+
+  # Templates must use the component for any tag the components modules
+  # define: `<.button>` instead of `<button>`, `<.input>` instead of
+  # `<input>`. The tags are read from the modules, so adding `def p` there is
+  # all it takes to start requiring `<.p>`.
+  core_component_tags: [
+    # The components modules, one or several when the design system spans
+    # files. Without this key, the one core_components.ex under lib.
+    paths: ["lib/example_web/components/core_components.ex"]
+  ],
 
   # Which review a branch needs, from the paths it changed. A path is tested
   # against the tiers from protected down to low and the first match wins, so

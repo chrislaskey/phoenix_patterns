@@ -100,8 +100,24 @@ impl Finding {
 /// return a `Potential` finding. `slow` runs only on files where `fast` returned
 /// a `Potential` finding, and returns only the findings it can confirm.
 pub trait SourceCheck: Sync {
-    /// Short identifier shown next to each finding, e.g. `raw_html_tags`.
+    /// Short identifier shown next to each finding, e.g. `core_component_tags`.
     fn name(&self) -> &'static str;
+
+    /// The setting keys this check accepts, without the check name. A key
+    /// ending in `.*` accepts any single segment there. A setting outside
+    /// this list stops the run before any check runs.
+    fn settings(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    /// Runs once, before any file is scanned, with the check's settings. A
+    /// check that needs more than the file in front of it, such as a list of
+    /// names read from one module, reads it here and keeps it. Returns `Err`
+    /// with a message when the settings cannot be used, which stops the run
+    /// with exit code 2.
+    fn prepare(&self, _settings: &Settings) -> Result<(), String> {
+        Ok(())
+    }
 
     /// Cheap scan. Over-reporting is fine, missing a real problem is not.
     fn fast(&self, file: &SourceFile) -> Vec<Finding>;
@@ -123,7 +139,8 @@ pub trait BranchCheck: Sync {
         &[]
     }
 
-    /// Runs once over the branch. Returns `Err` with a message when the
+    /// Runs once over the branch. Branch checks get their settings here
+    /// rather than in a separate step, since they only run once. Returns `Err` with a message when the
     /// settings cannot be used, which stops the run with exit code 2.
     fn run(&self, branch: &Branch, settings: &Settings) -> Result<Vec<Finding>, String>;
 }
@@ -145,7 +162,7 @@ impl Kind {
 
     pub fn settings(&self) -> &'static [&'static str] {
         match self {
-            Kind::Source(_) => &[],
+            Kind::Source(check) => check.settings(),
             Kind::Branch(check) => check.settings(),
         }
     }

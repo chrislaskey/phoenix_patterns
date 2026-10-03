@@ -10,7 +10,8 @@ defmodule Mix.Tasks.App.ChecksTest do
   @defaults Checks.load_config("/no/such/file")
 
   # The branch check reads git, so the source check tests turn it off and
-  # stay independent of the state of this repository.
+  # stay independent of the state of this repository. The source check reads
+  # the components module of this application, which defines `button/1`.
   @source_only Keyword.put(@defaults, :disabled_checks, [:review_tier])
 
   describe "load_config/1" do
@@ -24,13 +25,13 @@ defmodule Mix.Tasks.App.ChecksTest do
     end
 
     test "fills in defaults for keys the file leaves out", %{tmp_dir: dir} do
-      path = write(dir, ".app_checks.exs", "[disabled_checks: [:raw_html_tags]]")
+      path = write(dir, ".app_checks.exs", "[disabled_checks: [:core_component_tags]]")
 
       assert Enum.sort(Checks.load_config(path)) ==
                Enum.sort(
                  paths: ["lib"],
                  paths_to_ignore: ["_build", "deps", "node_modules"],
-                 disabled_checks: [:raw_html_tags],
+                 disabled_checks: [:core_component_tags],
                  base: "origin/main"
                )
     end
@@ -127,7 +128,7 @@ defmodule Mix.Tasks.App.ChecksTest do
   # Mix shell, which would also redirect output from concurrent tests.
   describe "run_checks/2 with source checks" do
     test "passes when no finding is confirmed", %{tmp_dir: dir} do
-      path = write(dir, "clean.html.heex", "<div><.p>Hello</.p><pre>x</pre></div>\n")
+      path = write(dir, "clean.html.heex", "<div><.button>Hi</.button><pre>x</pre></div>\n")
 
       output = capture_io(fn -> assert :ok = Checks.run_checks(@source_only, [path]) end)
 
@@ -135,7 +136,7 @@ defmodule Mix.Tasks.App.ChecksTest do
     end
 
     test "fails when a finding is confirmed", %{tmp_dir: dir} do
-      path = write(dir, "raw.html.heex", "<div>\n  <p>Hello</p>\n</div>\n")
+      path = write(dir, "raw.html.heex", "<div>\n  <button>Hi</button>\n</div>\n")
 
       output =
         capture_io(fn ->
@@ -144,13 +145,15 @@ defmodule Mix.Tasks.App.ChecksTest do
           end
         end)
 
-      assert output =~ "#{path}:2: <p> is a raw tag"
+      assert output =~
+               "#{path}:2: <button> is a raw tag, use <.button> from ExampleWeb.CoreComponents"
+
       assert output =~ "1 confirmed finding(s)"
     end
 
     test "a disabled check does not run", %{tmp_dir: dir} do
-      path = write(dir, "raw.html.heex", "<p>Hello</p>\n")
-      config = Keyword.put(@defaults, :disabled_checks, [:raw_html_tags, :review_tier])
+      path = write(dir, "raw.html.heex", "<button>Hi</button>\n")
+      config = Keyword.put(@defaults, :disabled_checks, [:core_component_tags, :review_tier])
 
       output = capture_io(fn -> assert :ok = Checks.run_checks(config, [path]) end)
 
@@ -167,7 +170,7 @@ defmodule Mix.Tasks.App.ChecksTest do
 
     test "skips ignored directories inside a scanned path", %{tmp_dir: dir} do
       File.mkdir_p!(Path.join(dir, "deps"))
-      write(dir, "deps/raw.html.heex", "<p>Hello</p>\n")
+      write(dir, "deps/raw.html.heex", "<button>Hi</button>\n")
       config = Keyword.put(@source_only, :paths_to_ignore, ["deps"])
 
       output = capture_io(fn -> assert :ok = Checks.run_checks(config, [dir]) end)
@@ -182,7 +185,7 @@ defmodule Mix.Tasks.App.ChecksTest do
   describe "run_checks/2 with the branch check" do
     test "prints the review tier", %{tmp_dir: dir} do
       path = write(dir, "clean.html.heex", "<div />\n")
-      config = Keyword.put(@defaults, :disabled_checks, [:raw_html_tags])
+      config = Keyword.put(@defaults, :disabled_checks, [:core_component_tags])
 
       output = capture_io(fn -> Checks.run_checks(config, [path]) end)
 
