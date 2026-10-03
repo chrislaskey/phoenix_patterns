@@ -4,8 +4,8 @@
 
 ## 📚 Patterns
 
-- [Hello](docs/patterns/hello.md)
-- [World](docs/patterns/world.md)
+- [Code Linting](docs/patterns/code-linting.md)
+- [Code Generators](docs/patterns/code-generators.md)
 
 ## Quick start
 
