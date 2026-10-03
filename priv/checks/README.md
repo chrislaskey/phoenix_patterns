@@ -1,4 +1,4 @@
-# checks
+# Custom checks in rust
 
 Custom source code checks, written in Rust. Each check runs in two passes:
 
@@ -56,3 +56,7 @@ follows for it, the slow pass cleared it.
    does (`run`).
 
 `src/checks/raw_html_tags.rs` is a worked example.
+
+## Additional links
+
+See the [Guide for writing checks in rust](docs/guides/writing-checks-in-rust.md)

@@ -22,7 +22,17 @@ flagged issues.
 
 ## Implementation
 
+A suggested implementation is to use `ex_check` library, which provides `mix
+check` as the single command to run. It is built to integrate with common
+Elixir community linters like the built-in `mix format`, the popular library
+like `mix credo`, as well as our own custom checks written in `priv/checks`.
+
+The last tier is the most interesting, custom linter checks written in Rust
+using the tiered approach pattern above. In addition to the `rust` based
+custom checks, you can also add custom `credo` rules where appropriate.
+
 **Key files**
 
-- [hello.ex]()
-- [world.ex]()
+- [Custom checks written in Rust](priv/checks/README.md)
+- [ExCheck config](.check.exs)
+- [Credo config](.credo.exs)
