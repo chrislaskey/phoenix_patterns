@@ -16,12 +16,15 @@ explanations.
 
 ## Implementation
 
-Uses the `igniter` library to build a library of generators in
-`priv/code_generators`. Each generator is a Mix task, so it runs the same way
-as every other tool and its moduledoc shows up in `mix help`. The moduledoc
-says when to use the generator, what it writes and what it refuses to do.
-`AGENTS.md` points at the folder and lists the tasks, so an engineer or an LLM
-finds the generator before writing the code by hand.
+Uses the `igniter` library to build a library of generators in `priv/code_generators`.
+Includes directions on what situations to use the generator in the individual file moduledocs. 
+Documents where generators can be found (`priv/code_generators`) in AGENTS.md.
+
+Each generator is a Mix task, so it runs the same way as every other tool and
+its moduledoc shows up in `mix help`. The moduledoc says when to use the
+generator, what it writes and what it refuses to do. `AGENTS.md` points at the
+folder and lists the tasks, so an engineer or an LLM finds the generator before
+writing the code by hand.
 
 Two generators cover the two shapes most generators take:
 
@@ -48,30 +51,6 @@ after the application.
 - [Tests for the generators](../../test/code_generators)
 - [Igniter config](../../.igniter.exs)
 - [The section in AGENTS.md](../../AGENTS.md)
-
-### Why a syntax tree
-
-A generator that edits text has to find the right place with a pattern, and
-the pattern breaks when the file is formatted differently or the code moves.
-Igniter parses the file, walks the tree to the node it wants, such as the
-`scope "/", MyAppWeb do` call that pipes through `:browser`, adds the new
-code next to it and writes the file back formatted. The router can be
-reordered or commented and the route still lands in the right scope.
-
-### Refuse, do not overwrite
-
-A generator reports a problem and writes nothing when the module or function
-it would add already exists. All of its changes are written together or not
-at all, so a failed run never leaves a route without its LiveView. The
-`--dry-run` flag prints the changes without writing them.
-
-### Tests without files
-
-Igniter builds a project in memory for tests. A test gives
-`Igniter.Test.test_project/1` the few files the generator looks at, such as a
-router, runs the task with `Igniter.compose_task/3` and asserts on the
-created files and patches. No files are written, so the tests are fast and
-run with `async: true`.
 
 ## Adopting this pattern
 
