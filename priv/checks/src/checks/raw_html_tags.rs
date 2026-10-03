@@ -11,6 +11,9 @@ use crate::check::{Check, Finding, SourceFile};
 
 pub struct RawHtmlTags;
 
+/// The check this file contributes. Every file in `src/checks/` exports one.
+pub const CHECK: &dyn Check = &RawHtmlTags;
+
 const TAGS: &[&str] = &["p", "h1", "h2", "h3", "h4", "h5", "h6"];
 
 impl Check for RawHtmlTags {

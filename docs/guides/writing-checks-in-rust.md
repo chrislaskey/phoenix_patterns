@@ -75,16 +75,50 @@ To build and run in one step:
 cargo run --release --manifest-path priv/checks/Cargo.toml -- lib
 ```
 
-Directories named `_build`, `deps`, or `node_modules` are skipped wherever
-they appear, so `checks .` is safe. Naming one directly, as in `checks deps`,
-still scans it.
+There are two options, and each can be given more than once. `--ignore NAME`
+skips every directory called `NAME`, however deep, so
+`checks --ignore deps --ignore _build .` is safe. A directory named directly
+as a path is still scanned. `--disable NAME` skips the check called `NAME`.
+Naming a check that does not exist is an error, so a typo cannot quietly
+disable nothing.
+
+Day to day, run the checks through Mix instead. `mix app.checks` builds the
+program first, then fills in those options from `.app_checks.exs` in the
+project root and passes any paths through:
+
+```sh
+mix app.checks
+mix app.checks lib test
+```
+
+Every key in the file is optional. These are the defaults:
+
+```elixir
+[
+  paths: ["lib"],
+  paths_to_ignore: ["_build", "deps", "node_modules"],
+  disabled_checks: []
+]
+```
+
+Paths on the command line replace `paths` for that run. `disabled_checks`
+names checks by file name, so `[:raw_html_tags]` turns off
+`src/checks/raw_html_tags.rs`.
+
+`mix check` runs the same task alongside the formatter, Credo and the tests,
+see `.check.exs`. The task is in `lib/mix/tasks/app.checks.ex`.
 
 ## Adding a check
 
-Every check is one file in `priv/checks/src/checks/`. It implements the `Check`
-trait from `priv/checks/src/check.rs`, which has three functions:
+Every check is one file in `priv/checks/src/checks/`. Every `.rs` file in that
+directory is a check: `build.rs` lists the directory at compile time and
+generates the `checks` module from it, so adding a check is adding a file.
+Each file implements the `Check` trait from `priv/checks/src/check.rs`, which
+has three functions, and exports the result as `CHECK`:
 
-- `name` returns a short label shown next to each finding.
+- `name` returns a short label shown next to each finding. It must be the
+  file name without `.rs`, because that is also how `disabled_checks` refers
+  to the check. A generated test fails the build when the two differ.
 - `fast` takes a file and returns findings. Use `Finding::confirmed` when sure
   and `Finding::potential` when not.
 - `slow` takes a file and returns only `Finding::confirmed` findings.
@@ -95,6 +129,8 @@ Here is a complete check that forbids `IO.inspect` in `lib/`:
 use crate::check::{Check, Finding, SourceFile};
 
 pub struct NoIoInspect;
+
+pub const CHECK: &dyn Check = &NoIoInspect;
 
 impl Check for NoIoInspect {
     fn name(&self) -> &'static str {
@@ -124,20 +160,10 @@ impl Check for NoIoInspect {
 The fast pass flags every mention, including ones inside comments. The slow
 pass drops the commented lines and confirms the rest.
 
-To wire it in, open `priv/checks/src/checks/mod.rs` and add two lines:
-
-```rust
-mod no_io_inspect;
-
-pub fn all() -> Vec<Box<dyn Check>> {
-    vec![
-        Box::new(raw_html_tags::RawHtmlTags),
-        Box::new(no_io_inspect::NoIoInspect),
-    ]
-}
-```
-
-Build and run. The new check is now part of every run.
+There is nothing to wire in. Save the file as
+`priv/checks/src/checks/no_io_inspect.rs`, build, and run. The new check is
+now part of every run. To turn it off for a project without deleting it, add
+it to `disabled_checks` in `.app_checks.exs`.
 
 ## Testing a check
 
@@ -202,8 +228,11 @@ cargo test --manifest-path priv/checks/Cargo.toml
 | Path | What it is |
 |---|---|
 | `priv/checks/Cargo.toml` | The Rust project. Two dependencies: `rayon` for running files in parallel, `walkdir` for finding files. |
-| `priv/checks/src/main.rs` | The runner. Collects files, runs the fast pass, then the slow pass, then prints the summary and sets the exit code. |
+| `priv/checks/src/main.rs` | The runner. Parses `--ignore` and `--disable`, collects files, runs the fast pass, then the slow pass, then prints the summary and sets the exit code. |
 | `priv/checks/src/check.rs` | The `Check` trait, the `Finding` and `SourceFile` types every check uses, and the `testing` helpers. |
-| `priv/checks/src/checks/mod.rs` | The list of checks to run. |
+| `priv/checks/build.rs` | Runs at compile time. Lists `src/checks/`, generates the `checks` module with `all()`, and a test that each check's `name` matches its file name. |
 | `priv/checks/src/checks/raw_html_tags.rs` | A worked example check. |
 | `priv/checks/README.md` | The short version of this guide, kept next to the code. |
+| `lib/mix/tasks/app.checks.ex` | The Mix task. Builds the program with cargo, runs it, and fails when a finding is confirmed. |
+| `.check.exs` | Lists the Mix task as a tool so `mix check` runs it with everything else. |
+| `.app_checks.exs` | Paths to scan, directory names to ignore, and checks to disable. Optional. |

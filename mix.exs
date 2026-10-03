@@ -27,7 +27,7 @@ defmodule Example.MixProject do
 
   def cli do
     [
-      preferred_envs: [precommit: :test]
+      preferred_envs: [check: :test]
     ]
   end
 
@@ -72,7 +72,9 @@ defmodule Example.MixProject do
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ex_check, "~> 0.17", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -94,8 +96,7 @@ defmodule Example.MixProject do
         "tailwind example --minify",
         "esbuild example --minify",
         "phx.digest"
-      ],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      ]
     ]
   end
 end

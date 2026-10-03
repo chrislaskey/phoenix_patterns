@@ -33,6 +33,57 @@ custom checks, you can also add custom `credo` rules where appropriate.
 
 **Key files**
 
-- [Custom checks written in Rust](priv/checks/README.md)
-- [ExCheck config](.check.exs)
-- [Credo config](.credo.exs)
+- [Custom checks written in Rust](../../priv/checks/README.md)
+- [Mix task that builds and runs them](../../lib/mix/tasks/app.checks.ex)
+- [Test for the Mix task](../../test/mix/tasks/app.checks_test.exs)
+- [ExCheck config](../../.check.exs)
+- [Credo config](../../.credo.exs)
+- [Custom checks config](../../.app_checks.exs)
+
+### One command
+
+Use the `mix check` as the one command to run all linters. It runs every tool
+in parallel and prints one report at the end:
+
+```
+ ✓ compiler success in 0:00
+ ✓ formatter success in 0:00
+ ✓ unused_deps success in 0:00
+ ✓ hex_audit success in 0:01
+ ✓ credo success in 0:00
+ ✓ ex_unit success in 0:01
+ ✓ gettext success in 0:01
+ ✓ app_checks success in 0:01
+```
+
+**Note:** `mix check --fix` also runs the fixers, such as `mix format`.
+
+**Note:** `mix check --retry` can be used to rerun just the failures.
+
+### The custom checks as a Mix task
+
+The custom checks in `priv/checks` are wrapped in a Mix task so it looks and
+behaves like every other tool. `mix app.checks` builds and runs all the checks
+for the app. Custom paths can be passed in as an argument:
+
+```sh
+mix app.checks
+mix app.checks lib/my_app_web/components/layouts.ex
+```
+
+**Note**: an `.app_checks.exs` file can be used to configure the custom app checks.
+
+## Adopting this pattern
+
+1. Add `credo` and `ex_check` to `deps` in `mix.exs`, both with
+   `only: [:dev, :test], runtime: false`, and add
+   `preferred_envs: [check: :test]` to `cli/0` so tests run in the right
+   environment.
+2. Copy `.check.exs`, `.credo.exs` and `.app_checks.exs`.
+3. Copy `priv/checks`, `lib/mix/tasks/app.checks.ex` and its test. Nothing
+   in them is named after the application, so no edits are needed.
+4. Remove the generated `precommit` alias and point `AGENTS.md` at
+   `mix check` instead, so there is one command.
+5. Run `mix check`. A freshly generated application needs two small fixes
+   before it is clean: run `mix gettext.extract` so the `.pot` files exist,
+   and fix the handful of Credo findings in the generated code.
