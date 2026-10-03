@@ -39,3 +39,6 @@ npm-debug.log
 *.db
 *.db-*
 
+
+# Rust checks build output
+/priv/checks/target/

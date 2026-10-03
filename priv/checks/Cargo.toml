@@ -1,0 +1,9 @@
+[package]
+name = "checks"
+version = "0.1.0"
+edition = "2024"
+description = "Custom source code checks, run as a fast pass then a slow pass"
+
+[dependencies]
+rayon = "1"
+walkdir = "2"
