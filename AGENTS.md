@@ -5,6 +5,16 @@ This is a web application written using the Phoenix web framework.
 - Use `mix check` when you are done with all changes and fix any pending issues
 - Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
 
+### Code generators
+
+- Code generators live in `priv/code_generators`, one Mix task per file. **Always** run the matching generator instead of writing the code by hand, then edit what it wrote:
+  - `mix app.gen.live Dashboard /dashboard` for a new page: the LiveView, its route and its test
+  - `mix app.gen.component card` for a new function component in `CoreComponents`
+- Each file's moduledoc says when to use it and what it writes. Read it with `mix help app.gen.live` before running one for the first time
+- Pass `--yes` to write without a confirmation prompt, or `--dry-run` to see the changes without writing them
+- A generator refuses to overwrite and changes nothing when the module or function already exists. Treat that as a sign the code exists, not as something to work around
+- To add a generator, follow `priv/code_generators/README.md`
+
 ### Phoenix v1.8 guidelines
 
 - **Always** begin your LiveView templates with `<Layouts.app flash={@flash} ...>` which wraps all inner content

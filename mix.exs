@@ -32,7 +32,10 @@ defmodule Example.MixProject do
   end
 
   # Specifies which paths to compile per environment.
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  # The code generators in priv/code_generators are Mix tasks that need the
+  # igniter dependency, which is only present in dev and test.
+  defp elixirc_paths(:test), do: ["lib", "test/support", "priv/code_generators"]
+  defp elixirc_paths(:dev), do: ["lib", "priv/code_generators"]
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.
@@ -74,7 +77,8 @@ defmodule Example.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_check, "~> 0.17", only: [:dev, :test], runtime: false}
+      {:ex_check, "~> 0.17", only: [:dev, :test], runtime: false},
+      {:igniter, "~> 0.8", only: [:dev, :test]}
     ]
   end
 

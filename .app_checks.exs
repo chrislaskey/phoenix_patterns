@@ -53,6 +53,7 @@
       "lib/example_web/router.ex",
       "lib/example_web/endpoint.ex",
       "lib/example/application.ex",
+      "priv/code_generators/**",
       "config/**",
       "mix.exs",
       "mix.lock",
