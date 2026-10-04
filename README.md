@@ -47,11 +47,14 @@ used for any source, whether a human or LLM agent.
 Common themes in the patterns:
 
 - Assume all code will contain mistakes. Use strict linters and tooling to speed up iteration cycles.
-- Limit high-level architecture mistakes by keeping to simple core patterns and stricly enforce shared code follows them.
-- Human in the loop is required for some aspects of code review. Full automation "fast lanes" for low-risk changes.
-- Prototype in the app itself, not third party tools
-- Do not merge protypes
-- All code must be written with a functional deevelopment environment (any combination of local, docker, or cloud)
+- Enable "fast lanes" for code review of low-risk changes
+- Higher review standards for high-risk and/or core architecture changes
+- Keep shared patterns simple and strictly enforce all shared code follows them
+- Require changes to rules to be done in separate PRs from other changes.
+- Require code to be written with a functional development environment (any combination of local, docker, or cloud)
+- Implement strict architecture boundaries and prevent cross-calling
+- Run all tests with `async: true` and keep them fast using combination of Mox/Hammox and Mimic libraries
+- Prototype in the app itself, not third party tools. Do not merge prototypes.
 
 Common anti-patterns:
 
