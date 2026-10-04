@@ -19,9 +19,11 @@ is a collection of patterns in-the-small that collectively add up to a better
 and more streamlined way of shipping code.
 
 It keeps humans where they are needed most - at the critical decision
-making points. Abdicating decision making to LLMs is not the way forward.
+making points. Abdicating decision making to LLMs is an anti-pattern.
+
 While the patterns themselves are varied, this is one underlying theme that
-runs through all of them.
+runs through all of them - putting humans into charge of key decision making
+and enabling LLMs to do the parts they excel at.
 
 ## The foundational assumption
 
