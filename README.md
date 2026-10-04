@@ -1,45 +1,60 @@
 # Phoenix Patterns
 
-> Patterns for working with Phoenix in the age of LLMs
+> Patterns for delivering solutions in Phoenix in the age of LLMs
 
 ## Overview
 
+Writing code has always been the fun part software engineers get to do in order
+to deliver solutions to real problems. Modern software development is changing.
+
+The way we've been building solutions - called the software development
+life-cycle (or SDLC for short) - was refined over decades of lessons learned.
+While tools have always been changing over those decades, none changed things
+faster than the adoption of LLMs. That's because LLMs are changing the bigger
+picture too, not just how we code itself is written, but how as a business
+at large identifies and builds solutions to real problems.
+
+It's a time of evolution and adaptation in how we write code. This repository
+is a collection of patterns in-the-small that collectively add up to a better
+and more streamlined way of shipping code.
+
+It keeps humans where they are needed most - at the critical decision
+making points. Abdicating decision making to LLMs is not the way forward.
+While the patterns themselves are varied, this is one underlying theme that
+runs through all of them.
+
+## The foundational assumption
+
+Building a better software development process starts with accepting a
+fundamental belief:
+
+> Assume all code will contain mistakes
+
+Regardless of who wrote it. LLMs make mistakes. Humans do too.
+
 Modern software development is moving towards smaller teams that do more and
-deliver faster. In practice this may mean a combination of solving for:
+deliver faster. Experienced software engineers are writing code across more
+areas and with less previous domain knowledge than ever before. Even without
+using LLMs, the chances for mistakes has increased, not decreased.
 
-In practice, this means code contributions will come from:
+## Patterns overview
 
-- Software engineers. Smaller teams, ownership over more areas with less domain knowledge than before. Even hand written code will contain more mistakes than in the past.
-- Non-technical contributors. Product, design, sales, all contributing and building features using LLMs
-
-- Software engineers using LLM agents / loops.
-
-- Higher software development - rapid prototyping, demos, fast delivery important
-- Faster speed of delivery - automating testing, automating aspects of code reviews, post-deploy validation
-
-As well as realities that code will be generated:
-
-- With a human in the loop. 
-- With no human in the loop (agents).
-
-The patterns in this library are shared learnings from adapting to this new normal.
-
-Common anti-patterns I've seen but don't believe is true:
-
-- Assume LLMs can write good software with enough context and trust they'll build it correctly
-- Assume LLMs will make good architecture choices given enough context
-- LLMs will deliver correct code if given a solid engineering plan
-
-The patterns in this library are shared learnings from adapting to this new normal.
+Common themes in the patterns:
 
 - Assume all code will contain mistakes. Use strict linters and tooling to speed up iteration cycles.
-- Limit high-level architecture mistakes by keeping to simple patterns and enforce adherence strictly
+- Limit high-level architecture mistakes by keeping to simple core patterns and stricly enforce shared code follows them.
 - Human in the loop is required for some aspects of code review. Full automation "fast lanes" for low-risk changes.
 - Prototype in the app itself, not third party tools
 - Do not merge protypes
 - All code must be written with a functional deevelopment environment (any combination of local, docker, or cloud)
 
-## 📚 Patterns
+Common anti-patterns:
+
+- LLMs can write good software with enough context and trust they'll build it correctly
+- LLMs will make good architecture choices given enough context
+- LLMs will follow a solid engineering plan without deviating from it
+
+## 📚 Patterns Catalogue
 
 - [Code Linting](docs/patterns/code-linting.md)
 - [Code Review](docs/patterns/code-review.md)
