@@ -27,8 +27,7 @@ and enabling LLMs to do the parts they excel at.
 
 ## The foundational assumption
 
-Building a better software development process starts with accepting a
-fundamental belief:
+Building a better software development process starts with:
 
 > Assume all code will contain mistakes
 
@@ -38,6 +37,10 @@ Modern software development is moving towards smaller teams that do more and
 deliver faster. Experienced software engineers are writing code across more
 areas and with less previous domain knowledge than ever before. Even without
 using LLMs, the chances for mistakes has increased, not decreased.
+
+By assuming mistakes can happen anywhere, we can build sensible guardrails and
+robust tooling to help identify and correct mistakes. Those same tools can be
+used for any source, whether a human or LLM agent.
 
 ## Patterns overview
 
@@ -63,13 +66,3 @@ Common anti-patterns:
 - [Code Generators](docs/patterns/code-generators.md)
 - [Common UI](docs/patterns/common-ui.md)
 - [Prototypes](docs/patterns/prototypes.md)
-
-## Quick start
-
-To start your Phoenix server:
-
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
-* Run `mix check` before committing, it runs every linter, the tests, and the custom checks
-
-Now you can visit [`localhost:4010`](http://localhost:4010) from your browser.
