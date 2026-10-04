@@ -42,3 +42,6 @@ npm-debug.log
 
 # Rust checks build output
 /priv/checks/target/
+
+# The local environment file bin/docker generates
+/docker/*.env

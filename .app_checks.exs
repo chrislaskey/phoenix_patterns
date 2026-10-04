@@ -59,7 +59,12 @@
       "mix.lock",
       ".tool-versions",
       "test/support/**",
-      ".github/**"
+      ".github/**",
+      "Dockerfile",
+      ".dockerignore",
+      "docker/**",
+      "bin/**",
+      "rel/**"
     ],
 
     # Feature work. Reviewed by an engineer.
