@@ -53,6 +53,7 @@ Common themes in the patterns:
 - Keep shared patterns simple and strictly enforce all shared code follows them
 - Require changes to rules to be done in separate PRs from other changes.
 - Require code to be written with a functional development environment (any combination of local, docker, or cloud)
+- Build a full library of deterministic code generators and reference them in skills
 - Implement strict architecture boundaries and prevent cross-calling
 - Run all tests with `async: true` and keep them fast using combination of Mox/Hammox and Mimic libraries
 - Prototype in the app itself, not third party tools. Do not merge prototypes.
