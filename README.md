@@ -47,6 +47,7 @@ used for any source, whether a human or LLM agent.
 Common themes in the patterns:
 
 - Assume all code will contain mistakes. Use strict linters and tooling to speed up iteration cycles.
+- Ensure linters execute quickly and give meaningful feedback early
 - Enable "fast lanes" for code review of low-risk changes
 - Higher review standards for high-risk and/or core architecture changes
 - Keep shared patterns simple and strictly enforce all shared code follows them
