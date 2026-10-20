@@ -1,4 +1,6 @@
 defmodule Example.Data.Helpers.Contexts do
+  @moduledoc "Common helper functions for contexts"
+
   import Ecto.Query
 
   # Joins
@@ -59,9 +61,7 @@ defmodule Example.Data.Helpers.Contexts do
   # Changesets
 
   def changeset(schema, record, params, options) do
-    changesets = Keyword.get(options, :changesets)
-
-    if changesets do
+    if changesets = Keyword.get(options, :changesets) do
       changesets
       |> List.wrap()
       |> Enum.reduce(record, fn changeset, record -> changeset.(record, params, options) end)

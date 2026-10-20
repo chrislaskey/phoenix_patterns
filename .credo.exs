@@ -119,7 +119,7 @@
           {Credo.Check.Refactor.FilterCount, []},
           {Credo.Check.Refactor.FilterFilter, []},
           {Credo.Check.Refactor.FunctionArity, []},
-          {Credo.Check.Refactor.LongQuoteBlocks, []},
+          {Credo.Check.Refactor.LongQuoteBlocks, [max_line_count: 300]},
           {Credo.Check.Refactor.MapJoin, []},
           {Credo.Check.Refactor.MatchInCondition, []},
           {Credo.Check.Refactor.NegatedConditionsInUnless, []},

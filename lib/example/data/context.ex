@@ -66,7 +66,8 @@ defmodule Example.Data.Context do
 
   @callback get(String.t() | integer() | atom(), Keyword.t()) :: map() | nil
   @callback get_by(Keyword.t()) :: map() | nil
-  @callback fetch(String.t() | integer() | atom(), Keyword.t()) :: {:ok, map()} | {:error, :not_found}
+  @callback fetch(String.t() | integer() | atom(), Keyword.t()) ::
+              {:ok, map()} | {:error, :not_found}
   @callback fetch_by(Keyword.t()) :: {:ok, map()} | {:error, :not_found}
 
   @callback change(struct(), map(), Keyword.t()) :: Ecto.Changeset.t()
@@ -196,7 +197,9 @@ defmodule Example.Data.Context do
 
       def create_or_update(id, params, options \\ [])
       def create_or_update(%{id: id}, params, options), do: create_or_update(id, params, options)
-      def create_or_update(%{"id" => id}, params, options), do: create_or_update(id, params, options)
+
+      def create_or_update(%{"id" => id}, params, options),
+        do: create_or_update(id, params, options)
 
       def create_or_update(id, params, options) do
         case get(id, options) do
@@ -234,7 +237,8 @@ defmodule Example.Data.Context do
 
       def delete_many(options) do
         if Keyword.get(options, :filters) == nil || Keyword.get(options, :filters) == [] do
-          raise ArgumentError, "delete_many/1 needs at least one filter, it would delete every row"
+          raise ArgumentError,
+                "delete_many/1 needs at least one filter, it would delete every row"
         end
 
         schema()
