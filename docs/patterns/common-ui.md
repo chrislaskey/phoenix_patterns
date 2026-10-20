@@ -49,7 +49,7 @@ CI. It is built to stay fast as the application grows:
 
 **Key files**
 
-- [The check](../../priv/checks/src/checks/core_component_tags.rs)
+- [The check](https://github.com/chrislaskey/app_checks/blob/main/priv/checks/src/checks/core_component_tags.rs)
 - [Its settings](../../.app_checks.exs)
 - [The components module it reads](../../lib/example_web/components/core_components.ex)
 - [The layout, converted to use `<.button>`](../../lib/example_web/components/layouts.ex)
@@ -98,7 +98,7 @@ the component unchanged:
 2. Add a `core_component_tags` key to `.app_checks.exs` with the `paths` to the
    components modules, or leave it out if the module is the one
    `core_components.ex` under `lib`.
-3. Run `mix app.checks` and read the findings. Convert each raw tag to its
+3. Run `mix app_checks` and read the findings. Convert each raw tag to its
    component.
 4. To bring a new element under the rule, add the component to the module,
    such as `def p`, run the check, and convert what it finds. There is no

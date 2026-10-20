@@ -1,88 +1,98 @@
-# Configuration for `mix app.checks`, the custom checks in priv/checks. The
-# first four keys are the runner's and are optional with these defaults.
-# Every other key names a check and holds its settings. See
-# `mix help app.checks`.
-[
-  # Files and directories the source checks scan when none are given on the
-  # command line
-  paths: ["lib"],
-  # Directory names skipped wherever they appear under those paths
-  paths_to_ignore: ["_build", "deps", "node_modules"],
-  # Every file in priv/checks/src/checks is a check unless it is named here,
-  # for example `[:core_component_tags]`
-  disabled_checks: [],
-  # What the branch checks compare the current branch with, at the point the
-  # branch left it. Only read, never fetched. `mix app.checks --base REF`
-  # overrides it for one run, for a branch that builds on another branch.
-  base: "origin/main",
+# Configuration for `mix app_checks`: the built-in checks and this project's
+# own in priv/checks, in the shape of `.credo.exs`. See `mix help app_checks`
+# for every key and the config of each check.
+%{
+  # This project's own checks, one .rs file each, compiled in with the
+  # built-in ones. See docs/guides/writing-checks-in-rust.md
+  custom_checks: "priv/checks",
 
-  # Templates must use the component for any tag the components modules
-  # define: `<.button>` instead of `<button>`, `<.input>` instead of
-  # `<input>`. The tags are read from the modules, so adding `def p` there is
-  # all it takes to start requiring `<.p>`.
-  core_component_tags: [
-    # The components modules, one or several when the design system spans
-    # files. Without this key, the one core_components.ex under lib.
-    paths: ["lib/example_web/components/core_components.ex"]
-  ],
+  # `mix app_checks` runs the config called "default". Add another and run
+  # it with `mix app_checks --config-name NAME`. Configs do not merge: each
+  # one is the whole list for its run
+  configs: [
+    %{
+      name: "default",
+      # The git ref the branch is compared with, at the point the branch left
+      # it. Only read, never fetched. `mix app_checks --base REF` overrides it
+      # for one run, for a branch that builds on another branch
+      base_ref: "origin/main",
+      checks: [
+        # A check runs only when it is listed here. An atom alone runs with
+        # `level: :error` and `scope: :all`. `level: :warning` prints a
+        # violation without failing the run. `scope: :changed` limits a check
+        # to the files the branch changed, and the lines it changed in them,
+        # so an old problem on a line the branch left alone is not reported.
+        # `config:` holds the check's own keys
+        enabled: [
+          # Templates must use the component for any tag the components
+          # modules define: `<.button>` instead of `<button>`, `<.input>`
+          # instead of `<input>`. The tags are read from the modules, so adding
+          # `def p` there is all it takes to start requiring `<.p>`. A new
+          # application has nothing old to tolerate, so every file counts
+          {:core_component_tags,
+           config: [paths: ["lib/example_web/components/core_components.ex"]]},
 
-  # Which review a branch needs, from the paths it changed. A path is tested
-  # against the tiers from protected down to low and the first match wins, so
-  # a broad low pattern cannot pull a file out of a higher tier. Patterns
-  # match the whole path from the project root: `*` does not cross a `/`,
-  # `**` does.
-  review_tier: [
-    # Tier for paths that match no pattern below: :high or :standard
-    default: :high,
+          # Files that decide what gets checked or who reviews. A pull request
+          # that changes a file in a group may change other files in the same
+          # group and nothing else, so the change is the whole story and the
+          # rules cannot be relaxed on the way past
+          {:separate_pr,
+           config: [
+             groups: [
+               agents: ["AGENTS.md"],
+               codeowners: [".github/CODEOWNERS"],
+               protected_workflows: [".github/workflows/protected-*.yml"],
+               lint_config: [".credo.exs", ".check.exs", ".app_checks.exs"],
+               checks: ["priv/checks/**"]
+             ]
+           ]},
 
-    # Files that decide what gets checked or who reviews. A pull request that
-    # changes any file in a group may change other files in the same group
-    # and nothing else. Reviewed by an architect.
-    protected: [
-      agents: ["AGENTS.md"],
-      codeowners: [".github/CODEOWNERS"],
-      protected_workflows: [".github/workflows/protected-*.yml"],
-      lint_config: [".credo.exs", ".check.exs", ".app_checks.exs"],
-      checks: ["priv/checks/**", "lib/mix/tasks/app.checks.ex"]
-    ],
+          # Shared code, configuration and dependencies. A warning, so the run
+          # says which files need an architect without failing. CODEOWNERS
+          # requires the approval. Patterns match the whole path from the
+          # project root: `*` does not cross a `/`, `**` does
+          {:architect_review,
+           level: :warning,
+           config: [
+             paths: [
+               "lib/example_web.ex",
+               "lib/example_web/components/**",
+               "lib/example_web/router.ex",
+               "lib/example_web/endpoint.ex",
+               "lib/example/application.ex",
+               "priv/code_generators/**",
+               "config/**",
+               "mix.exs",
+               "mix.lock",
+               ".tool-versions",
+               "test/support/**",
+               ".github/**",
+               "Dockerfile",
+               ".dockerignore",
+               "docker/**",
+               "bin/**",
+               "rel/**"
+             ]
+           ]},
 
-    # Shared code, configuration and dependencies. Reviewed by an architect.
-    high: [
-      "lib/example_web.ex",
-      "lib/example_web/components/**",
-      "lib/example_web/router.ex",
-      "lib/example_web/endpoint.ex",
-      "lib/example/application.ex",
-      "priv/code_generators/**",
-      "config/**",
-      "mix.exs",
-      "mix.lock",
-      ".tool-versions",
-      "test/support/**",
-      ".github/**",
-      "Dockerfile",
-      ".dockerignore",
-      "docker/**",
-      "bin/**",
-      "rel/**"
-    ],
-
-    # Feature work. Reviewed by an engineer.
-    standard: [
-      "lib/example/**",
-      "lib/example_web/**/*.ex",
-      "priv/repo/**",
-      "priv/gettext/**",
-      "test/**",
-      "assets/**"
-    ],
-
-    # Templates and docs. Reviewed by an automated reviewer.
-    low: [
-      "lib/example_web/live/**/*.heex",
-      "lib/example_web/controllers/**/*.heex",
-      "docs/**",
-      "README.md"
-    ]
+          # Feature work: contexts, schemas, LiveView modules, migrations and
+          # tests. An engineer must review these. Templates and docs match
+          # nothing here, so an automated reviewer alone can approve them
+          {:human_review,
+           level: :warning,
+           config: [
+             paths: [
+               "lib/example/**",
+               "lib/example_web/**/*.ex",
+               "priv/repo/**",
+               "priv/gettext/**",
+               "test/**",
+               "assets/**"
+             ]
+           ]}
+        ],
+        disabled: []
+      ]
+    }
   ]
-]
+}

@@ -78,6 +78,7 @@ defmodule Example.MixProject do
       {:bandit, "~> 1.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.17", only: [:dev, :test], runtime: false},
+      {:app_checks, github: "chrislaskey/app_checks", only: [:dev, :test], runtime: false},
       {:igniter, "~> 0.8", only: [:dev, :test]}
     ]
   end

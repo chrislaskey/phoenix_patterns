@@ -49,7 +49,6 @@ erl_crash.dump
 # the container as environment variables, never baked into the image.
 /docker/*.env
 
-# Database files and the build output of the custom checks
+# Database files
 *.db
 *.db-*
-/priv/checks/target/

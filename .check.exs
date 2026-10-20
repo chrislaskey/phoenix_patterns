@@ -10,9 +10,9 @@
 # project has: compiler, unused_deps, formatter, hex_audit, credo, ex_unit,
 # gettext. See `mix help check`.
 
-# CI sets APP_CHECKS_BASE to the pull request's base branch, so the review
-# tier check measures a pull request opened against another branch against
-# that branch. Locally it is unset and `.app_checks.exs` decides.
+# CI sets APP_CHECKS_BASE to the pull request's base branch, so the checks
+# measure a pull request opened against another branch against that branch.
+# Locally it is unset and base_ref in `.app_checks.exs` decides.
 app_checks_base =
   case System.get_env("APP_CHECKS_BASE") do
     base when base in [nil, ""] -> ""
@@ -28,7 +28,7 @@ app_checks_base =
   # installed, such as dialyzer and sobelow. Pass --skipped to see them.
   skipped: false,
   tools: [
-    # Custom checks in priv/checks, see `mix help app.checks`
-    {:app_checks, "mix app.checks" <> app_checks_base}
+    # The built-in checks and the custom ones in priv/checks, see `mix help app_checks`
+    {:app_checks, "mix app_checks" <> app_checks_base}
   ]
 ]

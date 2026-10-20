@@ -1,312 +1,293 @@
 # Writing checks in Rust
 
-A check is a rule the repository must follow. The checks live in
-`priv/checks/`, a small Rust program. It runs each check, prints what it
+A check is a rule the repository must follow. The checks run in a small
+Rust program that ships with the [`app_checks`](https://github.com/chrislaskey/app_checks) library,
+a dependency of this project. Four checks are built in. The project's
+own checks live in `priv/checks/`, one file each, and are compiled in with
+the built-in ones. The program runs each enabled check, prints what it
 finds, and exits with an error code if anything is wrong.
 
-There are two kinds of check, named after what they are given:
+A check is a small function that finds facts: these files, these lines,
+break this rule. Everything else is decided by `.app_checks.exs` and the
+command line: which checks run, which files each looks at, and what a
+violation means.
 
-- A **source check** is given one source file, such as "templates must use
-  `<.button>` rather than a raw `<button>`". It reads every source file once
-  and runs on each.
-- A **branch check** is given the branch: every path it changed compared
-  with a base branch, such as "a change to `AGENTS.md` must be the only
-  change". It runs once.
-
-Rust is used so the whole run finishes in well under a second, even on a large
-codebase. A slow check gets ignored, then deleted.
+Rust is used so the whole run finishes in well under a second on a normal
+codebase, and prints as it goes on a huge one. A slow check gets ignored,
+then deleted.
 
 ## How a run works
 
-Branch checks run first, once. Then source checks, in two passes:
+1. The task reads `.app_checks.exs` and picks the named config, `default`
+   unless the command line says otherwise.
+2. The program gathers the state of the code once, from git, so no check
+   has to: every file in the project, and every file the branch changed
+   since it left the base ref, with the line numbers it changed. Commits,
+   staged and unstaged edits and untracked files all count.
+3. Each enabled check runs in turn with its config and that state, and
+   returns violations: a file, a line where there is one, and a message.
+4. Each violation prints with the check's level. `error` fails the run,
+   `warning` does not.
 
-1. **The fast pass** runs on every file. It is a cheap scan, such as a
-   substring search. It must never miss a real problem, so when it is not sure
-   it reports the line as `potential` rather than staying quiet. When it is
-   sure, it reports the line as `confirmed`.
-2. **The slow pass** runs only on the files where the fast pass reported
-   something `potential`. It does the careful work, such as parsing, and
-   reports only what it can confirm.
+A check about files does its work in two passes. **The fast pass** is a
+cheap test, such as a substring search, over the files the check looks at.
+It must never miss a real problem, so when it is not sure it keeps the
+file. **The slow pass** runs only on the files the fast pass kept. It does
+the careful work, such as parsing, and returns the violations. Files run
+in parallel, and a check over all files prints each violation as soon as
+it is found, so you can start fixing the first one while the rest of the
+run continues.
 
-Findings print as soon as each file finishes, so you can start fixing the first
-one while the rest of the run continues. Files run in parallel.
-
-Here is a run on a branch that changed the layout module, where a doc string
-mentions `<button>` on line 24 and a template uses one on line 134, and a
-page template uses a raw `<input>`:
+Here is a run on a branch that changed the layout module, where a doc
+string mentions `<button>` on line 24 and a template uses one on line 134,
+and a page template uses a raw `<input>`:
 
 ```
-lib/example_web/components/layouts.ex: high [review_tier, info]
-review tier: high, 1 file(s) changed against origin/main [review_tier, info]
-lib/example_web/components/layouts.ex:24: <button> may be a raw tag [core_component_tags, potential]
-lib/example_web/components/layouts.ex:134: <button> may be a raw tag [core_component_tags, potential]
-lib/example_web/controllers/page_html/home.html.heex:12: <input> is a raw tag, use <.input> from ExampleWeb.CoreComponents [core_component_tags, confirmed]
-lib/example_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from ExampleWeb.CoreComponents [core_component_tags, confirmed]
-2 check(s) over 18 file(s), 1 slow pass(es), 2 confirmed finding(s)
+lib/example_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from ExampleWeb.CoreComponents [core_component_tags, error]
+lib/example_web/controllers/page_html/home.html.heex:12: <input> is a raw tag, use <.input> from ExampleWeb.CoreComponents [core_component_tags, error]
+lib/example_web/components/layouts.ex: ask an architect to review this change [architect_review, warning]
+4 check(s), 2 error(s), 1 warning(s)
 ```
 
-Each line is `file:line: message [check name, confidence]`. A branch check
-has no line to give, so its lines are `file: message` or just `message`.
-
-Read it like this. The first two lines are the branch check: the one changed
-file is in the `high` tier, so the branch is too. They are `info`, which
-never fails the run. The `.heex` file is all template, so its `<input>` is
-confirmed by the fast pass on its own. In the `.ex` file the fast pass cannot
-tell a template from a doc string, so it reports both mentions of `<button>`
-as potential. The slow pass reads only the `~H` templates in that file. It
-confirms line 134 and says nothing about line 24, which means it was
-cleared.
-
-The last line is a summary. The exit code is `1` if any finding was confirmed
-and `0` otherwise. Potential findings that the slow pass cleared do not fail
-the run, and neither do `info` findings.
+Each line is `file:line: message [check, level]`. A violation about a
+whole file has no line. Line 24 is not reported: the slow pass reads only
+the `~H` templates in an `.ex` file, so the mention in the doc string is
+not a violation. The last line is a summary. The exit code is `1` if any
+violation was an error and `0` otherwise.
 
 ## Build and run
 
 You need Rust. The version is pinned in `.tool-versions`, so `asdf install`
 sets it up.
 
-From the repository root:
-
 ```sh
-cargo build --release --manifest-path priv/checks/Cargo.toml
-./priv/checks/target/release/checks
+mix app_checks
 ```
 
-With no arguments it scans `lib/`. Pass any files or directories to scan
-something else:
+The task builds the program into `_build` first, then runs it. The first
+build takes a little while. After that, when nothing changed, cargo finishes
+at once, so a run costs about as much as the checks themselves.
 
 ```sh
-./priv/checks/target/release/checks lib test
-./priv/checks/target/release/checks lib/example_web/components/layouts.ex
+mix app_checks lib test               # only what is under these paths
+mix app_checks --base feature/parent  # compare the branch with another ref
+mix app_checks --config-name review   # run another named config
+mix app_checks --check no_io_inspect  # one check, from the active config
+mix app_checks --scope changed        # every check on changed files only
+mix app_checks --verbose              # print every stage, not only the result
 ```
 
-To build and run in one step:
+`--base` is for a branch that builds on another unmerged branch. The
+comparison starts where the branch left the base, so commits that landed
+on the base afterwards do not count. Git is only read. Nothing is fetched
+or changed.
 
-```sh
-cargo run --release --manifest-path priv/checks/Cargo.toml -- lib
-```
+`mix check` runs the same task alongside the formatter, Credo and the
+tests, see `.check.exs`.
 
-There are four options:
+## Configuration
 
-- `--base REF` is what branch checks compare the current branch with,
-  `origin/main` when not given. The comparison starts where the branch left
-  the base, so commits that landed on the base afterwards do not count. Git
-  is only read. Nothing is fetched or changed.
-- `--ignore NAME` skips every directory called `NAME`, however deep, so
-  `checks --ignore deps --ignore _build .` is safe. A directory named directly
-  as a path is still scanned.
-- `--disable NAME` skips the check called `NAME`. Naming a check that does
-  not exist is an error, so a typo cannot quietly disable nothing.
-- `--set CHECK.KEY=VALUE` gives one setting to one check. A check that does
-  not exist, or a key the check does not accept, is an error for the same
-  reason.
-
-All but `--base` can be given more than once. Paths apply to source checks
-only. A branch check always looks at the whole branch.
-
-Day to day, run the checks through Mix instead. `mix app.checks` builds the
-program first, then fills in those options from `.app_checks.exs` in the
-project root and passes any paths through:
-
-```sh
-mix app.checks
-mix app.checks lib test
-mix app.checks --base feature/parent-branch
-```
-
-The last form is for a branch that builds on another unmerged branch.
-
-Every key in the file is optional. These are the defaults:
+`.app_checks.exs` in the project root, a map in the shape of `.credo.exs`.
+The one here is a complete example with every built-in check. In short:
 
 ```elixir
-[
-  paths: ["lib"],
-  paths_to_ignore: ["_build", "deps", "node_modules"],
-  disabled_checks: [],
-  base: "origin/main"
-]
+%{
+  custom_checks: "priv/checks",
+  configs: [
+    %{
+      name: "default",
+      base_ref: "origin/main",
+      checks: [
+        enabled: [
+          {:core_component_tags, config: [paths: ["lib/example_web/components/core_components.ex"]]},
+          {:no_io_inspect, level: :warning, scope: :changed},
+          {:separate_pr, config: [groups: [agents: ["AGENTS.md"]]]}
+        ],
+        disabled: [:human_review]
+      ]
+    }
+  ]
+}
 ```
 
-Paths on the command line replace `paths` for that run. `disabled_checks`
-names checks by file name, so `[:core_component_tags]` turns off
-`src/checks/core_component_tags.rs`.
+A check runs only when it is listed under `enabled`. An atom alone runs
+with the defaults, `level: :error` and `scope: :all`. A tuple sets either
+of those, and `config:` holds the check's own keys. `disabled` lists the
+checks the project knows about and chose not to run; a check in neither
+list does not run either, and the summary counts it, so a new file in
+`priv/checks` is not silently ignored.
 
-Any other key names a check and holds its settings. See "Settings" below.
+`scope: :changed` limits a check to the files the branch changed, and
+reports only the lines it changed, so a problem that was already there on
+a line the branch left alone is not reported. This is how a new or
+stricter check lands in a large codebase without a sweep through every
+file first. On the default branch nothing is changed, so such a check
+checks nothing there, and a change elsewhere that creates a violation on
+an untouched line is only seen by a check over `all` files.
 
-`mix check` runs the same task alongside the formatter, Credo and the tests,
-see `.check.exs`. The task is in `lib/mix/tasks/app.checks.ex`.
+## Adding a check
 
-## Adding a source check
+Every check is one file in `priv/checks/`. Every `.rs` file in that
+directory is a check: the library's build script lists the directory at
+compile time and compiles the files in with the built-in checks, so adding
+a check is adding a file. A file named like a built-in check stops the
+build.
 
-Every check is one file in `priv/checks/src/checks/`. Every `.rs` file in that
-directory is a check: `build.rs` lists the directory at compile time and
-generates the `checks` module from it, so adding a check is adding a file.
-Each file exports the check as `CHECK`, wrapped in `Kind::Source` or
-`Kind::Branch` from `priv/checks/src/check.rs`.
+A check implements the `Check` trait from the library's `check` module and
+exports itself as `CHECK`. Two functions to write:
 
-A source check implements the `SourceCheck` trait, which has three functions
-to write:
+- `name` returns the file name without `.rs`, which is how the config
+  refers to the check and what is shown next to each violation. A
+  generated test fails the build when the two differ.
+- `run` is given the `State`, every file and every change, and the check's
+  `Config`, and returns `Violation`s, or an error message when the config
+  cannot be used.
 
-- `name` returns a short label shown next to each finding. It must be the
-  file name without `.rs`, because that is also how `disabled_checks` refers
-  to the check. A generated test fails the build when the two differ.
-- `fast` takes a file and returns findings. Use `Finding::confirmed` when sure
-  and `Finding::potential` when not.
-- `slow` takes a file and returns only `Finding::confirmed` findings.
-
-And two more for a check that takes settings, `settings` and `prepare`. See
-"Settings" below.
-
-Here is a complete check that forbids `IO.inspect` in `lib/`:
+Here is a complete check that forbids `IO.inspect`:
 
 ```rust
-use crate::check::{Finding, Kind, SourceCheck, SourceFile};
+use crate::check::{fast, slow, Check, Config, Files, State, Violation};
 
 pub struct NoIoInspect;
 
-pub const CHECK: Kind = Kind::Source(&NoIoInspect);
+pub const CHECK: &dyn Check = &NoIoInspect;
 
-impl SourceCheck for NoIoInspect {
+impl Check for NoIoInspect {
     fn name(&self) -> &'static str {
         "no_io_inspect"
     }
 
-    fn fast(&self, file: &SourceFile) -> Vec<Finding> {
-        file.contents
-            .match_indices("IO.inspect")
-            .map(|(offset, _)| {
-                Finding::potential(file.line_of(offset), "IO.inspect may be a leftover debug call")
-            })
-            .collect()
-    }
-
-    fn slow(&self, file: &SourceFile) -> Vec<Finding> {
-        file.contents
-            .lines()
-            .enumerate()
-            .filter(|(_, line)| line.contains("IO.inspect") && !line.trim_start().starts_with('#'))
-            .map(|(index, _)| Finding::confirmed(index + 1, "remove the IO.inspect call"))
-            .collect()
+    fn run(&self, state: &State, config: &Config) -> Result<Vec<Violation>, String> {
+        let files = state.files(config.scope()).with_extension(&["ex", "exs"]);
+        let suspects = fast(config, files, |file| file.contents().contains("IO.inspect"));
+        let violations = slow(config, suspects, |file| {
+            file.contents()
+                .lines()
+                .enumerate()
+                .filter(|(_, line)| line.contains("IO.inspect") && !line.trim_start().starts_with('#'))
+                .map(|(index, _)| Violation::at(index + 1, "remove the IO.inspect call"))
+                .collect()
+        });
+        Ok(state.in_scope(config.scope(), violations))
     }
 }
 ```
 
-The fast pass flags every mention, including ones inside comments. The slow
-pass drops the commented lines and confirms the rest.
+The four lines of `run` are the shape every check about files follows,
+with a helper for each step:
 
-There is nothing to wire in. Save the file as
-`priv/checks/src/checks/no_io_inspect.rs`, build, and run. The new check is
-now part of every run. To turn it off for a project without deleting it, add
-it to `disabled_checks` in `.app_checks.exs`.
+1. **Pick the files.** `state.files(config.scope())` is every file, or the
+   files the branch changed, as the config says. `with_extension` keeps
+   the ones the check applies to.
+2. **The fast pass.** `fast` keeps the files the closure says yes to, in
+   parallel.
+3. **The slow pass.** `slow` runs the closure on each kept file, in
+   parallel, and collects the violations. `Violation::at(line, message)`
+   is on a line of the file in hand; `slow` fills in the path.
+4. **Keep what is in scope.** `state.in_scope` drops violations on lines
+   the branch did not change when the scope is `changed`, and does
+   nothing otherwise.
 
-## Adding a branch check
+The check calls each helper itself, so nothing happens to its files or
+violations that it did not ask for. Read a file with `file.contents()`.
+Files are read from disk the first time any check asks and shared after
+that. `file.line_of(offset)` is the line of a byte offset.
 
-A branch check implements the `BranchCheck` trait: `name` as above, and
-`run`, which takes the `Branch` and the check's `Settings` and returns
-findings, or an error message when the settings cannot be used. The error
-stops the run with exit code `2` before anything else runs.
+Save the file as `priv/checks/no_io_inspect.rs`, add `:no_io_inspect` to
+`enabled` in `.app_checks.exs`, and run `mix app_checks`.
 
-The `Branch` has `base`, the branch it was compared with, and `paths`, every
-path the branch changed: commits since it left the base, staged and unstaged
-edits, and untracked files that are not ignored. A rename is both paths.
+## A check about the branch
 
-Findings from a branch check name their own file, since there is no current
-file. `Finding::about(path, confidence, message)` is about a file and
-`Finding::info(message)` is about the whole run. The third confidence,
-`Confidence::Info`, prints but never fails the run.
+A check about which paths changed, rather than about the contents of a
+file, reads `state.changed()`: every path the branch changed, deleted
+files included, each with the lines it changed. It returns
+`Violation::file(path, message)` for a violation about a whole file, or
+`Violation::run(message)` for one about the whole run. Such a check reads
+the branch whatever its scope is, and should say so in its docs.
 
 Here is a complete check that fails when a branch adds a file ending in
 `.env`:
 
 ```rust
-use crate::check::{Branch, BranchCheck, Confidence, Finding, Kind, Settings};
+use crate::check::{Check, Config, State, Violation};
 
 pub struct NoEnvFiles;
 
-pub const CHECK: Kind = Kind::Branch(&NoEnvFiles);
+pub const CHECK: &dyn Check = &NoEnvFiles;
 
-impl BranchCheck for NoEnvFiles {
+impl Check for NoEnvFiles {
     fn name(&self) -> &'static str {
         "no_env_files"
     }
 
-    fn run(&self, branch: &Branch, _settings: &Settings) -> Result<Vec<Finding>, String> {
-        Ok(branch
-            .paths
+    fn run(&self, state: &State, _config: &Config) -> Result<Vec<Violation>, String> {
+        Ok(state
+            .changed()
             .iter()
-            .filter(|path| path.extension().is_some_and(|ext| ext == "env"))
-            .map(|path| {
-                Finding::about(path, Confidence::Confirmed, "secrets do not belong in git, add the file to .gitignore")
-            })
+            .filter(|file| file.path.extension().is_some_and(|ext| ext == "env"))
+            .map(|file| Violation::file(&file.path, "secrets do not belong in git, add the file to .gitignore"))
             .collect())
     }
 }
 ```
 
-`priv/checks/src/checks/review_tier.rs` is a larger worked example that uses
-settings.
+The built-in [`separate_pr.rs`](https://github.com/chrislaskey/app_checks/blob/main/priv/checks/src/checks/separate_pr.rs)
+is a larger worked example that uses config keys.
 
-## Settings
+## Config keys
 
-A check that needs configuration declares the keys it accepts and reads them
-from `Settings`:
+A check that needs configuration declares the keys it accepts and reads
+them from `Config`:
 
 ```rust
-fn settings(&self) -> &'static [&'static str] {
-    &["default", "protected.*", "high", "standard", "low"]
+fn config_keys(&self) -> &'static [&'static str] {
+    &["paths", "groups.*"]
 }
 ```
 
-A key ending in `.*` accepts any one more segment, so `protected.*` accepts
-`protected.agents`. The runner refuses any other key before any check runs.
+A key ending in `.*` accepts any one more segment, so `groups.*` accepts
+`groups.agents`. The runner refuses any other key before any check runs.
+`config.one(key)` is the last value, `config.many(key)` every value, and
+`config.under(prefix)` every key below `prefix.` with the prefix removed,
+which is how `groups.agents` and `groups.lint_config` become named groups.
 
-`Settings` keeps every value in the order given, with the check name removed
-from the keys. `one(key)` is the last value, so a later `--set` overrides an
-earlier one. `many(key)` is every value. `under(prefix)` is every key below
-`prefix.` with the prefix removed, which is how `protected.agents` and
-`protected.lint_config` become named groups.
-
-A branch check gets its `Settings` in `run`. A source check gets them in
-`prepare`, which the runner calls once, before any file is scanned and before
-anything prints. The check reads what it needs there and keeps it for the
-passes. `priv/checks/src/checks/core_component_tags.rs` reads the components
-modules in `prepare`, builds one regular expression from their function
-names, and keeps both in a `OnceLock`. An `Err` from `prepare` stops the run with
-exit code `2`, the same as from `run`.
-
-In `.app_checks.exs` the settings are a keyword list under the check's name.
-The Mix task flattens it: a list gives the key once per element and a nested
-keyword list adds a segment.
+In `.app_checks.exs` the keys are the `config:` keyword list of the check.
+The Mix task flattens it: a list gives the key once per element and a
+nested keyword list adds a segment.
 
 ```elixir
-review_tier: [
-  default: :high,
-  protected: [agents: ["AGENTS.md"]],
-  high: ["config/**", "mix.exs"]
-]
+{:separate_pr, config: [groups: [agents: ["AGENTS.md"], lint_config: [".credo.exs", ".check.exs"]]]}
 ```
 
-becomes `--set review_tier.default=high`,
-`--set review_tier.protected.agents=AGENTS.md`,
-`--set review_tier.high=config/**` and `--set review_tier.high=mix.exs`.
+becomes `--set separate_pr.groups.agents=AGENTS.md`,
+`--set separate_pr.groups.lint_config=.credo.exs` and
+`--set separate_pr.groups.lint_config=.check.exs`.
+
+A check that does expensive work from its config, such as reading a module
+or building a regular expression, does it in `prepare`, which the runner
+calls once for every enabled check before anything runs or prints. The
+built-in [`core_component_tags.rs`](https://github.com/chrislaskey/app_checks/blob/main/priv/checks/src/checks/core_component_tags.rs)
+reads the components modules there, builds one regular expression from their
+function names, and keeps both in a `OnceLock`. An `Err` from `prepare` or
+`run` stops the run with exit code `2`. `glob_set(key, patterns)` builds a
+path matcher and refuses an empty list or a bad pattern.
 
 ## Testing a check
 
 Each check file ends with its own tests. The helpers in `check::testing`
 keep them short:
 
-- `source(path, contents)` builds a file from a snippet. Only the extension of
-  the path matters.
-- `lines(findings, confidence)` returns the line numbers of the findings with
-  that confidence.
-- `run(check, path, contents)` runs the fast pass, then the slow pass if
-  anything was potential, and returns the line numbers that end up confirmed.
-  This is what a real run would report for that file.
-- `branch(paths)` builds a branch that changed those paths, and
-  `settings(pairs)` builds settings from `(key, value)` pairs.
-- `messages(findings, confidence)` returns `file: message` strings, for
-  findings that have no line.
+- `state()` builds a `State` file by file: `.file(path, contents)` for a
+  file the branch did not touch, `.changed(path, contents, &[lines])` for
+  one it changed on those lines, `.added(path, contents)` for a new one,
+  `.deleted(path)`, then `.build()`.
+- `config(check, &[(key, value)])` is a config for the check with those
+  keys, as an error over all files. `scoped(check, scope, keys)` sets the
+  scope.
+- `run(check, state, config)` prepares and runs the check and returns each
+  violation as `path:line: message`, in path and line order.
+- `error(check, state, config)` is the message when preparing or running
+  fails.
 
 Here are tests for the `IO.inspect` check above:
 
@@ -314,18 +295,25 @@ Here are tests for the `IO.inspect` check above:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::check::Confidence::Potential;
-    use crate::check::testing::{lines, run, source};
+    use crate::check::testing::{config, run, scoped, state};
+    use crate::check::Scope;
 
     #[test]
-    fn fast_flags_every_mention() {
-        let file = source("a.ex", "# IO.inspect\nIO.inspect(x)\n");
-        assert_eq!(lines(&NoIoInspect.fast(&file), Potential), vec![1, 2]);
+    fn skips_comments() {
+        let state = state().file("a.ex", "# IO.inspect\nIO.inspect(x)\n").build();
+        assert_eq!(
+            run(&NoIoInspect, &state, &config(&NoIoInspect, &[])),
+            vec!["a.ex:2: remove the IO.inspect call"]
+        );
     }
 
     #[test]
-    fn full_run_skips_comments() {
-        assert_eq!(run(&NoIoInspect, "a.ex", "# IO.inspect\nIO.inspect(x)\n"), vec![2]);
+    fn the_changed_scope_skips_old_lines() {
+        let state = state().changed("a.ex", "IO.inspect(x)\nIO.inspect(y)\n", &[2]).build();
+        assert_eq!(
+            run(&NoIoInspect, &state, &scoped(&NoIoInspect, Scope::Changed, &[])),
+            vec!["a.ex:2: remove the IO.inspect call"]
+        );
     }
 }
 ```
@@ -335,60 +323,52 @@ And one for the `.env` check:
 ```rust
 #[test]
 fn fails_on_env_files_only() {
-    let findings = NoEnvFiles
-        .run(&branch(&["env/dev.env", "config/dev.exs"]), &settings(&[]))
-        .unwrap();
+    let state = state().added("env/dev.env", "").changed("config/dev.exs", "", &[1]).build();
     assert_eq!(
-        messages(&findings, Confirmed),
+        run(&NoEnvFiles, &state, &config(&NoEnvFiles, &[])),
         vec!["env/dev.env: secrets do not belong in git, add the file to .gitignore"]
     );
 }
 ```
 
-Run them with:
+Run them, together with the tests of the built-in checks, with:
 
 ```sh
-cargo test --manifest-path priv/checks/Cargo.toml
+mix app_checks.test
 ```
 
 ## Writing a good check
 
-- **The fast pass must not miss anything.** It is fine for it to over-report.
-  It is not fine for it to stay quiet on a real problem, because the slow pass
-  only looks at files the fast pass flagged.
-- **Only confirm from the fast pass when it is certain.** A confirmed finding
-  fails the run and is never re-checked.
-- **The slow pass may rescan the whole file.** It does not need to know what
-  the fast pass found. If it reports a line the fast pass already confirmed,
-  the runner drops the duplicate.
+- **The fast pass must not miss anything.** It is fine for it to
+  over-report. It is not fine for it to stay quiet on a real problem,
+  because the slow pass only looks at files the fast pass kept.
+- **The slow pass may rescan the whole file.** It does not need to know
+  what the fast pass found.
 - **Write the message as an instruction.** Say what to use instead, as in
-  `use <.p> from CoreComponents`. The reader may be a person or a tool fixing
-  the code without any other context.
-- **Skip files early.** If a check only applies to some files, return an
-  empty list for the rest before doing any work. See `is_module` in
-  `priv/checks/src/checks/core_component_tags.rs`, which compares file names
-  before it touches the disk.
-- **Do the expensive work once.** A check that reads a module or builds a
-  regular expression does it in `prepare`, not in `fast`, which runs on
-  every file. One expression that matches every tag at once is one pass
-  over each file however many tags there are.
-- **Refuse bad settings loudly.** Return an error from `run` for a value you
-  cannot use, naming the setting, rather than falling back to a default. A
-  check that quietly checks nothing is worse than no check.
-- **Use `info` for what people look for on a good day.** The tier of a branch
-  is worth printing every time. A problem is `confirmed`.
+  `use <.p> from CoreComponents`. The reader may be a person or a tool
+  fixing the code without any other context.
+- **Skip files early.** Filter by extension before reading anything. A
+  file is only read from disk when a check asks for its contents.
+- **Do the expensive work once**, in `prepare`, not inside the closures,
+  which run on every file. One expression that matches every tag at once
+  is one pass over each file however many tags there are.
+- **Refuse bad config loudly.** Return an error for a value you cannot
+  use, naming the key, rather than falling back to a default. A check that
+  quietly checks nothing is worse than no check.
+- **Leave the meaning to the config.** A check returns facts. Whether a
+  fact fails the run is `level`, and whether old code counts is `scope`.
+  The same check can be an error in one project and a warning on changed
+  lines in another, without a line of Rust changing.
 
 ## Where things live
 
 | Path | What it is |
 |---|---|
-| `priv/checks/Cargo.toml` | The Rust project. Four dependencies: `rayon` for running files in parallel, `walkdir` for finding files, `globset` for matching paths against patterns, `regex` for matching text. |
-| `priv/checks/src/main.rs` | The runner. Parses the options, prepares the source checks, collects the branch from git and the files from disk, runs branch checks, then the fast and slow passes, then prints the summary and sets the exit code. |
-| `priv/checks/src/check.rs` | The `SourceCheck` and `BranchCheck` traits, the `Kind` enum, the `Finding`, `SourceFile`, `Branch` and `Settings` types, and the `testing` helpers. |
-| `priv/checks/build.rs` | Runs at compile time. Lists `src/checks/`, generates the `checks` module with `all()`, and a test that each check's `name` matches its file name. |
-| `priv/checks/src/checks/core_component_tags.rs` | A worked source check with settings and a `prepare` step. See the [Common UI](../patterns/common-ui.md) pattern. |
-| `priv/checks/src/checks/review_tier.rs` | A worked branch check with settings. See the [Code Review](../patterns/code-review.md) pattern. |
-| `priv/checks/README.md` | The short version of this guide, kept next to the code. |
-| `lib/mix/tasks/app.checks.ex` | The Mix task. Builds the program with cargo, turns `.app_checks.exs` into options, runs it, and fails when a finding is confirmed. |
+| `priv/checks/` | This project's own checks, one `.rs` file each. |
+| `.app_checks.exs` | The named configs: which checks run, what a violation means, which files each looks at, and each check's own keys. |
 | `.check.exs` | Lists the Mix task as a tool so `mix check` runs it with everything else. |
-| `.app_checks.exs` | Paths to scan, directory names to ignore, checks to disable, the base branch, and each check's settings. Optional. |
+| [`app_checks`](https://github.com/chrislaskey/app_checks) | The library, in its own repository. Its README covers installing it in a project. |
+| [`priv/checks/src/main.rs`](https://github.com/chrislaskey/app_checks/blob/main/priv/checks/src/main.rs) | The runner. Parses the flags, prepares the enabled checks, gathers the state from git, runs each check, prints its violations, then the summary, and sets the exit code. |
+| [`priv/checks/src/check.rs`](https://github.com/chrislaskey/app_checks/blob/main/priv/checks/src/check.rs) | The `Check` trait, the `State`, `File`, `Config` and `Violation` types, the `fast`, `slow` and `glob_set` helpers, and the `testing` helpers. |
+| [`priv/checks/src/checks/core_component_tags.rs`](https://github.com/chrislaskey/app_checks/blob/main/priv/checks/src/checks/core_component_tags.rs) | A built-in check about files, with config and `prepare`. |
+| [`priv/checks/src/checks/separate_pr.rs`](https://github.com/chrislaskey/app_checks/blob/main/priv/checks/src/checks/separate_pr.rs) | A built-in check about the branch. See the [Code Review](../patterns/code-review.md) pattern. |

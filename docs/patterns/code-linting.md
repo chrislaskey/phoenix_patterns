@@ -33,9 +33,9 @@ custom checks, you can also add custom `credo` rules where appropriate.
 
 **Key files**
 
-- [Custom checks written in Rust](../../priv/checks/README.md)
-- [Mix task that builds and runs them](../../lib/mix/tasks/app.checks.ex)
-- [Test for the Mix task](../../test/mix/tasks/app.checks_test.exs)
+- [The library that builds and runs the checks](https://github.com/chrislaskey/app_checks)
+- [Its Mix task](https://github.com/chrislaskey/app_checks/blob/main/lib/mix/tasks/app_checks.ex)
+- [Guide for writing checks in Rust](../guides/writing-checks-in-rust.md)
 - [ExCheck config](../../.check.exs)
 - [Credo config](../../.credo.exs)
 - [Custom checks config](../../.app_checks.exs)
@@ -63,16 +63,25 @@ in parallel and prints one report at the end:
 
 ### The custom checks as a Mix task
 
-The custom checks in `priv/checks` are wrapped in a Mix task so it looks and
-behaves like every other tool. `mix app.checks` builds and runs all the checks
-for the app. Custom paths can be passed in as an argument:
+The checks are run by the Mix task of the `app_checks` library, so it looks
+and behaves like every other tool. `mix app_checks` builds and runs the
+checks that `.app_checks.exs` enables, the built-in ones and the project's
+own in `priv/checks`. Paths narrow a run to what is under them:
 
 ```sh
-mix app.checks
-mix app.checks lib/my_app_web/components/layouts.ex
+mix app_checks
+mix app_checks lib/my_app_web/components/layouts.ex
+mix app_checks --scope changed   # only the files and lines the branch changed
+mix app_checks --verbose         # print every stage, not only the result
 ```
 
-**Note**: an `.app_checks.exs` file can be used to configure the custom app checks.
+**Note**: `.app_checks.exs` lists the checks that run, in the shape of
+`.credo.exs`. For each one it says whether a violation is an `error` that
+fails the run or a `warning` that only prints, and whether the check looks
+at `all` files or only at what the branch `changed`. The second lets a new
+or stricter check land in a large codebase without first fixing every
+file, since a problem that was already there on a line the branch did not
+touch is not reported.
 
 ### The same command in CI
 
@@ -84,13 +93,16 @@ prefix is explained in the [Code Review](code-review.md) pattern.
 
 ## Adopting this pattern
 
-1. Add `credo` and `ex_check` to `deps` in `mix.exs`, both with
+1. Add `credo`, `ex_check` and `app_checks` to `deps` in `mix.exs`, all with
    `only: [:dev, :test], runtime: false`, and add
    `preferred_envs: [check: :test]` to `cli/0` so tests run in the right
    environment.
-2. Copy `.check.exs`, `.credo.exs` and `.app_checks.exs`.
-3. Copy `priv/checks`, `lib/mix/tasks/app.checks.ex` and its test. Nothing
-   in them is named after the application, so no edits are needed.
+2. Run `mix app_checks.install`, which writes `.app_checks.exs`, lists the
+   task in `.check.exs` and pins Rust in `.tool-versions`. Then copy
+   `.credo.exs`, and the paths of each check from the `.app_checks.exs`
+   here.
+3. Put the project's own checks in `priv/checks`, see the
+   [guide](../guides/writing-checks-in-rust.md).
 4. Remove the generated `precommit` alias and point `AGENTS.md` at
    `mix check` instead, so there is one command.
 5. Run `mix check`. A freshly generated application needs two small fixes

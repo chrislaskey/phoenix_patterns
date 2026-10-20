@@ -3,7 +3,7 @@ name: Check
 # Runs `mix check`, the same command as before a commit, so CI and a laptop
 # agree on what passes. It compiles with warnings as errors, checks
 # formatting, runs Credo, the tests, the gettext and dependency checks, and
-# the custom checks in priv/checks.
+# the custom checks through `mix app_checks`.
 #
 # The name starts with protected- because the custom checks include the
 # review tier check, which keeps protected files alone in their pull request.
@@ -26,10 +26,10 @@ permissions:
 
 env:
   MIX_ENV: test
-  # The review tier check compares the branch with the pull request's base,
-  # so a pull request opened against another branch is measured against that
-  # branch and not against main. Empty on a push to main, where the default
-  # in .app_checks.exs applies. Read by .check.exs.
+  # The checks compare the branch with the pull request's base, so a pull
+  # request opened against another branch is measured against that branch
+  # and not against main. Empty on a push to main, where base_ref in
+  # .app_checks.exs applies. Read by .check.exs.
   APP_CHECKS_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
 
 jobs:
@@ -54,17 +54,13 @@ jobs:
         id: rust
         run: echo "version=$(awk '$1 == "rust" { print $2 }' .tool-versions)" >> "$GITHUB_OUTPUT"
 
-      # Builds the custom checks in priv/checks
+      # Builds the checks, see https://github.com/chrislaskey/app_checks
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ steps.rust.outputs.version }}
 
-      - name: Cache the custom checks build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: priv/checks
-
+      # _build also holds the Rust build of the checks
       - name: Cache deps and build
         uses: actions/cache@v4
         with:
