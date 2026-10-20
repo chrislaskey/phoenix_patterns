@@ -1,6 +1,24 @@
 defmodule Example.Data.Helpers.Contexts do
   import Ecto.Query
 
+  # Joins
+
+  def joins(query, default, options, callback) do
+    options
+    |> Keyword.get(:joins, default)
+    |> Enum.reduce(query, fn name, query ->
+      callback.(query, name)
+    end)
+  end
+
+  def join_by_any_schema_association(query, name) do
+    if Ecto.Query.has_named_binding?(query, name) do
+      query
+    else
+      join(query, :left, [root], new in assoc(root, ^name), as: ^name)
+    end
+  end
+
   # Preloads
 
   def preloads(query, default, options) do
@@ -19,7 +37,7 @@ defmodule Example.Data.Helpers.Contexts do
     end)
   end
 
-  def filter(query, key, value) do
+  def filter_by_any_schema_fields(query, key, value) do
     where(query, ^Keyword.new([{key, value}]))
   end
 
@@ -34,7 +52,7 @@ defmodule Example.Data.Helpers.Contexts do
     end)
   end
 
-  def sort(query, direction, field) do
+  def sort_by_any_schema_fields(query, direction, field) do
     order_by(query, ^Keyword.new([{direction, field}]))
   end
 end

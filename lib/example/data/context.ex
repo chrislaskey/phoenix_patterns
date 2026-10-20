@@ -11,7 +11,7 @@ defmodule Example.Data.Context do
   Custom filters and sorts can be added by overriding the values:
 
     def filter(query, :hello, value), do: Ecto.Query.where(query, world: ^value)
-    def filter(query, key, value), do: Helpers.Contexts.filter(query, key, value)
+    def filter(query, key, value), do: super(query, key, value)
 
   NOTE: the built-in `filter/3` function provides a dynamic fallback, matching
   key/value to schema fields. Make sure to include this clause if you want to
@@ -21,22 +21,65 @@ defmodule Example.Data.Context do
 
     def filter(query, _key, _value), do: query
 
+  ### Joins
+
+  The `joins` key can be used to define named joins. The default implementation allows
+  joining by any association defined in the schema. Joins can be referenced in
+  other parts of the code, for example in a filter:
+
+    use Example.Data.Context, joins: [:users], #...
+
+    def filter(query, :user_id, value) do
+      Ecto.Query.where(query, [users: users], users.id == ^value)
+    end
+
+  Custom `join` functions can also be defined for more complex associations not
+  defined in the schema:
+
+    use Example.Data.Context, joins: [:world], # ...
+
+    def join(query, :world), do:
+      query
+      |> Ecto.Query.join(query, :left, [root], new in assoc(root, :hello), as: :hello)
+      |> Ecto.Query.join(query, :left, [hello: hello], new in assoc(hello, :world), as: :world)
+    end
+
+    def filter(query, :world_id, value) do
+      Ecto.Query.where(query, [world: world], world.id == ^value)
+    end
+
+    def filter(query, :world_slug, value) do
+      Ecto.Query.where(query, [world: world], world.slug == ^value)
+    end
+
+  This defines a join once that every filter can then use, rather than (re)defining joins
+  in the filter each time.
+
   """
 
   # Overridable
 
   @callback list(Keyword.t()) :: list(any())
+  @callback join(map(), atom()) :: map()
   @callback filter(map(), atom(), any()) :: map()
   @callback sort(map(), atom(), any()) :: map()
 
   @callback get(String.t() | integer() | atom(), Keyword.t()) :: map() | nil
   @callback get_by(Keyword.t()) :: map() | nil
   @callback fetch(String.t() | integer() | atom(), Keyword.t()) :: {:ok, map()} | {:error, :not_found}
-  @callback fetch_by(Keyword.t())  :: {:ok, map()} | {:error, :not_found}
+  @callback fetch_by(Keyword.t()) :: {:ok, map()} | {:error, :not_found}
+
+  @callback create(map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback update(struct(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback get_or_create(String.t() | integer() | atom(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback get_or_create_by(Keyword.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback create_or_update(String.t() | integer() | atom(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback create_or_update_by(Keyword.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
 
   # Not overridable
 
   @callback schema() :: atom()
+  @callback joins() :: list(any())
   @callback preloads() :: list(any())
   @callback filters() :: list(any())
   @callback sorts() :: list(any())
@@ -49,30 +92,38 @@ defmodule Example.Data.Context do
 
       def list(options \\ []) do
         schema()
+        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
+        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
         |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
         |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
         |> Example.Data.Helpers.Contexts.sorts(sorts(), options, &sort/3)
         |> Example.Repo.all()
       end
 
+      def join(query, name) do
+        Example.Data.Helpers.Contexts.join_by_any_schema_association(query, name)
+      end
+
       def filter(query, key, value) do
-        Example.Data.Helpers.Contexts.filter(query, key, value)
+        Example.Data.Helpers.Contexts.filter_by_any_schema_fields(query, key, value)
       end
 
       def sort(query, direction, field) do
-        Example.Data.Helpers.Contexts.sort(query, direction, field)
+        Example.Data.Helpers.Contexts.sort_by_any_schema_fields(query, direction, field)
       end
 
       # Get/fetch
 
       def get(id, options \\ []) do
         schema()
+        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
         |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
         |> Example.Repo.get(id)
       end
 
       def get_by(values, options \\ []) do
         schema()
+        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
         |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
         |> Example.Repo.get_by(values)
       end
@@ -91,9 +142,87 @@ defmodule Example.Data.Context do
         end
       end
 
+      # Create
+
+      def create(params, options \\ []) do
+        schema()
+        |> struct()
+        |> schema().changeset(params, options)
+        |> Example.Repo.insert()
+      end
+
+      # Update
+
+      def update(record, params, options \\ []) do
+        record
+        |> schema().changeset(params, options)
+        |> Example.Repo.update()
+      end
+
+      # Get or create
+
+      def get_or_create(id, params, options \\ [])
+      def get_or_create(%{id: id}, params, options), do: get_or_create(id, params, options)
+      def get_or_create(%{"id" => id}, params, options), do: get_or_create(id, params, options)
+
+      def get_or_create(id, params, options) do
+        case get(id, options) do
+          nil -> create(params, options)
+          record -> record
+        end
+      end
+
+      def get_or_create_by(by, params, options \\ []) do
+        case get_by(by, options) do
+          nil -> create(params, options)
+          record -> record
+        end
+      end
+
+      # Create or update
+
+      def create_or_update(id, params, options \\ [])
+      def create_or_update(%{id: id}, params, options), do: create_or_update(id, params, options)
+      def create_or_update(%{"id" => id}, params, options), do: create_or_update(id, params, options)
+
+      def create_or_update(id, params, options) do
+        case get(id, options) do
+          nil -> create(params, options)
+          record -> update(record, params, options)
+        end
+      end
+
+      def create_or_update_by(by, params, options \\ []) do
+        case get_by(by, options) do
+          nil -> create(params, options)
+          record -> update(record, params, options)
+        end
+      end
+
+      # Delete
+
+      def delete(record) when is_map(record) do
+        Example.Repo.delete(record)
+      end
+
+      def delete(id) do
+        case fetch(id) do
+          {:ok, record} -> delete(record)
+          error -> error
+        end
+      end
+
+      def delete_by(by) do
+        case fetch_by(by) do
+          {:ok, record} -> delete(record)
+          error -> error
+        end
+      end
+
       # Macro functions
 
       def schema, do: get_opt(:schema)
+      def joins, do: get_opt(:joins, [])
       def preloads, do: get_opt(:preloads, [])
       def filters, do: get_opt(:filters, [])
       def sorts, do: get_opt(:sorts, [])
@@ -104,17 +233,22 @@ defmodule Example.Data.Context do
         Keyword.get(unquote(opts), key, default)
       end
 
-      defoverridable [
-        list: 1,
-        filter: 3,
-        sort: 3,
-        get: 2,
-        get_by: 2,
-        fetch: 2,
-        fetch_by: 2
-      ]
+      defoverridable list: 1,
+                     join: 2,
+                     filter: 3,
+                     sort: 3,
+                     get: 2,
+                     get_by: 2,
+                     fetch: 2,
+                     fetch_by: 2,
+                     create: 2,
+                     update: 3,
+                     get_or_create: 3,
+                     get_or_create_by: 3,
+                     create_or_update: 3,
+                     create_or_update_by: 3,
+                     delete: 1,
+                     delete_by: 1
     end
   end
 end
-
-
