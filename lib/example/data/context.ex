@@ -69,12 +69,18 @@ defmodule Example.Data.Context do
   @callback fetch(String.t() | integer() | atom(), Keyword.t()) :: {:ok, map()} | {:error, :not_found}
   @callback fetch_by(Keyword.t()) :: {:ok, map()} | {:error, :not_found}
 
+  @callback change(struct(), map(), Keyword.t()) :: Ecto.Changeset.t()
   @callback create(map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
   @callback update(struct(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
-  @callback get_or_create(String.t() | integer() | atom(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback get_or_create(String.t() | integer() | atom(), map(), Keyword.t()) ::
+              {:ok, map()} | {:error, any()}
   @callback get_or_create_by(Keyword.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
-  @callback create_or_update(String.t() | integer() | atom(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback create_or_update(String.t() | integer() | atom(), map(), Keyword.t()) ::
+              {:ok, map()} | {:error, any()}
   @callback create_or_update_by(Keyword.t(), map(), Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback delete(struct() | String.t() | integer()) :: {:ok, map()} | {:error, any()}
+  @callback delete_by(Keyword.t()) :: {:ok, map()} | {:error, any()}
+  @callback delete_many(Keyword.t()) :: {non_neg_integer(), nil | list(any())}
 
   # Not overridable
 
@@ -92,7 +98,6 @@ defmodule Example.Data.Context do
 
       def list(options \\ []) do
         schema()
-        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
         |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
         |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
         |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
@@ -118,6 +123,7 @@ defmodule Example.Data.Context do
         schema()
         |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
         |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
+        |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
         |> Example.Repo.get(id)
       end
 
@@ -125,6 +131,7 @@ defmodule Example.Data.Context do
         schema()
         |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
         |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
+        |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
         |> Example.Repo.get_by(values)
       end
 
@@ -142,12 +149,18 @@ defmodule Example.Data.Context do
         end
       end
 
+      # Change
+
+      def change(record, params \\ %{}, options \\ []) do
+        Example.Data.Helpers.Contexts.changeset(schema(), record, params, options)
+      end
+
       # Create
 
       def create(params, options \\ []) do
         schema()
         |> struct()
-        |> schema().changeset(params, options)
+        |> change(params, options)
         |> Example.Repo.insert()
       end
 
@@ -155,7 +168,7 @@ defmodule Example.Data.Context do
 
       def update(record, params, options \\ []) do
         record
-        |> schema().changeset(params, options)
+        |> change(params, options)
         |> Example.Repo.update()
       end
 
@@ -219,6 +232,17 @@ defmodule Example.Data.Context do
         end
       end
 
+      def delete_many(options) do
+        if Keyword.get(options, :filters) == nil || Keyword.get(options, :filters) == [] do
+          raise ArgumentError, "delete_many/1 needs at least one filter, it would delete every row"
+        end
+
+        schema()
+        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
+        |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
+        |> Example.Repo.delete_all()
+      end
+
       # Macro functions
 
       def schema, do: get_opt(:schema)
@@ -241,6 +265,7 @@ defmodule Example.Data.Context do
                      get_by: 2,
                      fetch: 2,
                      fetch_by: 2,
+                     change: 3,
                      create: 2,
                      update: 3,
                      get_or_create: 3,
@@ -248,7 +273,8 @@ defmodule Example.Data.Context do
                      create_or_update: 3,
                      create_or_update_by: 3,
                      delete: 1,
-                     delete_by: 1
+                     delete_by: 1,
+                     delete_many: 1
     end
   end
 end

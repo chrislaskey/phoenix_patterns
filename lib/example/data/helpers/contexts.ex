@@ -55,4 +55,18 @@ defmodule Example.Data.Helpers.Contexts do
   def sort_by_any_schema_fields(query, direction, field) do
     order_by(query, ^Keyword.new([{direction, field}]))
   end
+
+  # Changesets
+
+  def changeset(schema, record, params, options) do
+    changesets = Keyword.get(options, :changesets)
+
+    if changesets do
+      changesets
+      |> List.wrap()
+      |> Enum.reduce(record, fn changeset, record -> changeset.(record, params, options) end)
+    else
+      schema.changeset(record, params, options)
+    end
+  end
 end
