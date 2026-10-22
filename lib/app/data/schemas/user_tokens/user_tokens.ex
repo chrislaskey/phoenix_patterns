@@ -17,7 +17,6 @@ defmodule App.Data.UserTokens do
   @magic_link_validity_in_minutes 15
   @change_email_validity_in_days 7
   @session_validity_in_days 14
-  @api_validity_in_days 365
 
   def filter(query, :valid, true) do
     # A token that has not expired. A magic link is valid for a quarter of an
@@ -33,7 +32,7 @@ defmodule App.Data.UserTokens do
         (token.context == "session" and
            token.inserted_at > ago(^@session_validity_in_days, "day")) or
         (token.context == "api" and
-           token.inserted_at > ago(^@api_validity_in_days, "day"))
+           token.inserted_at > ago(^App.Data.UserToken.api_validity_in_days(), "day"))
     )
   end
 

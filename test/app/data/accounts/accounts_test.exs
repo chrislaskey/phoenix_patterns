@@ -350,10 +350,11 @@ defmodule App.Data.AccountsTest do
       encoded_token = Accounts.generate_user_api_token(user)
       user_token = Accounts.get_user_api_token(encoded_token)
 
-      assert {:ok, {new_token, deleted_token}} =
+      assert {:ok, {new_token, new_user_token, deleted_token}} =
                Accounts.update_user_api_token(user_scope_fixture(user), user_token)
 
       assert deleted_token.id == user_token.id
+      assert new_user_token.id == Accounts.get_user_api_token(new_token).id
       refute Accounts.get_user_api_token(encoded_token)
       assert Accounts.get_user_api_token(new_token).user.id == user.id
     end

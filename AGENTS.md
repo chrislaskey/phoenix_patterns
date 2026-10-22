@@ -5,6 +5,14 @@ This is a web application written using the Phoenix web framework.
 - Use `mix check` when you are done with all changes and fix any pending issues
 - Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
 
+### Websocket API
+
+- Requests to `/api` are named `<domain>.<resource>.<action>`, like `auth.token.update`. Every request has all three parts
+  - The domain is the part of the product the request belongs to, like `auth` or `settings`
+  - The resource is plural, unless the domain only ever has one of it, like the connection's token in `auth`
+  - The action is `get`, `list`, `create`, `update` or `delete`
+- `App.Router.Api` routes each request to a handler module named after its domain and resource, like `App.Web.Api.Auth.Token` in `lib/app/web/api/auth/token.ex`. Add new requests there, not in `App.Web.ApiChannel`
+
 ### Code generators
 
 - Code generators live in `priv/code_generators`, one Mix task per file. **Always** run the matching generator instead of writing the code by hand, then edit what it wrote:

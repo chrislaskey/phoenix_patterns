@@ -14,6 +14,8 @@ defmodule App.Data.UserToken do
     timestamps(type: :utc_datetime, updated_at: false)
   end
 
+  @api_validity_in_days 365
+
   @required [:token, :context, :user_id]
   @optional [:sent_to, :authenticated_at]
 
@@ -24,5 +26,18 @@ defmodule App.Data.UserToken do
     token
     |> cast(params, @required ++ @optional)
     |> validate_required(@required)
+  end
+
+  @doc """
+  How long an API token is valid, see the `:valid` filter of
+  `App.Data.UserTokens`.
+  """
+  def api_validity_in_days, do: @api_validity_in_days
+
+  @doc """
+  When an API token expires.
+  """
+  def expires_at(%__MODULE__{context: "api", inserted_at: inserted_at}) do
+    DateTime.add(inserted_at, @api_validity_in_days, :day)
   end
 end

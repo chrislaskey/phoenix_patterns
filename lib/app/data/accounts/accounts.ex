@@ -135,12 +135,8 @@ defmodule App.Data.Accounts do
   on every connect, see `App.Web.ApiSocket`.
   """
   def generate_user_api_token(user) do
-    token = :crypto.strong_rand_bytes(@rand_size)
-
-    {:ok, _user_token} =
-      UserTokens.create(%{token: hash(token), user_id: user.id, context: @api_context})
-
-    encode(token)
+    {encoded_token, _user_token} = create_api_token(user)
+    encoded_token
   end
 
   @doc """
@@ -165,13 +161,14 @@ defmodule App.Data.Accounts do
   Updates an API token of the scope's user by replacing it: the token is
   deleted and a new one created in its place.
 
-  Returns `{:ok, {encoded_token, deleted_token}}`, or `{:error, :not_found}`
-  when the token is not one of the user's API tokens.
+  Returns `{:ok, {encoded_token, new_token, deleted_token}}`, or
+  `{:error, :not_found}` when the token is not one of the user's API tokens.
   """
   def update_user_api_token(scope, %UserToken{} = user_token) do
     Repo.transact(fn ->
-      with {:ok, user_token} <- delete_user_api_token(scope, user_token) do
-        {:ok, {generate_user_api_token(scope.user), user_token}}
+      with {:ok, deleted_token} <- delete_user_api_token(scope, user_token) do
+        {encoded_token, new_token} = create_api_token(scope.user)
+        {:ok, {encoded_token, new_token, deleted_token}}
       end
     end)
   end
@@ -341,6 +338,15 @@ defmodule App.Data.Accounts do
       UserTokens.create(%{token: hash(token), user_id: user.id, sent_to: user.email, context: context})
 
     encode(token)
+  end
+
+  defp create_api_token(user) do
+    token = :crypto.strong_rand_bytes(@rand_size)
+
+    {:ok, user_token} =
+      UserTokens.create(%{token: hash(token), user_id: user.id, context: @api_context})
+
+    {encode(token), user_token}
   end
 
   defp hash(token), do: :crypto.hash(@hash_algorithm, token)

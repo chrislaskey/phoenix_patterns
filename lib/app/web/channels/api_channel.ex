@@ -5,7 +5,7 @@ defmodule App.Web.ApiChannel do
   Clients join the `"api"` topic and push one event per request. The event
   name is the request and the payload is its params:
 
-      channel.push("user_tokens.update", {})
+      channel.push("auth.token.get", {})
 
   Every request runs as `socket.assigns.current_scope`, the user of the
   API token the client connected with (see `App.Web.ApiSocket`).

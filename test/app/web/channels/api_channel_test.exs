@@ -20,4 +20,10 @@ defmodule App.Web.ApiChannelTest do
 
     assert_reply ref, :error, %{reason: "unknown_request", event: "unknown.thing"}
   end
+
+  test "replies with an error for a request without a domain", %{socket: socket} do
+    ref = push(socket, "token.get", %{})
+
+    assert_reply ref, :error, %{reason: "unknown_request", event: "token.get"}
+  end
 end

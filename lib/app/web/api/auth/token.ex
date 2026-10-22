@@ -1,26 +1,41 @@
-defmodule App.Web.Api.UserTokens do
+defmodule App.Web.Api.Auth.Token do
   @moduledoc """
-  The `user_tokens` requests: a client managing the API token it connected
+  The `auth.token` requests: a client managing the API token it connected
   with. A client cannot see or change any other token.
 
-    * `user_tokens.update` - replaces the token and replies with the new one.
-    * `user_tokens.delete` - deletes the token.
+    * `auth.token.get` - when the token was created and when it expires.
+    * `auth.token.update` - replaces the token and replies with the new one
+      and when it expires.
+    * `auth.token.delete` - deletes the token.
 
-  Every socket connected with the token is closed after the reply, so a
-  client reconnects with its new token or not at all.
+  After an update or a delete, every socket connected with the old token is
+  closed after the reply, so a client reconnects with its new token or not
+  at all.
   """
 
   import Phoenix.Channel
 
   alias App.Data.Accounts
+  alias App.Data.UserToken
   alias App.Web.UserAuth
+
+  def handle("get", _params, socket) do
+    api_token = socket.assigns.api_token
+
+    {:reply, {:ok, %{inserted_at: api_token.inserted_at, expires_at: UserToken.expires_at(api_token)}},
+     socket}
+  end
 
   def handle("update", _params, socket) do
     %{current_scope: scope, api_token: api_token} = socket.assigns
 
     case Accounts.update_user_api_token(scope, api_token) do
-      {:ok, {token, deleted_token}} -> reply_and_disconnect(socket, %{token: token}, deleted_token)
-      {:error, :not_found} -> {:reply, {:error, %{reason: "not_found"}}, socket}
+      {:ok, {token, new_token, deleted_token}} ->
+        payload = %{token: token, expires_at: UserToken.expires_at(new_token)}
+        reply_and_disconnect(socket, payload, deleted_token)
+
+      {:error, :not_found} ->
+        {:reply, {:error, %{reason: "not_found"}}, socket}
     end
   end
 
