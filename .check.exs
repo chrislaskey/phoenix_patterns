@@ -19,6 +19,16 @@ app_checks_base =
     base -> " --base " <> base
   end
 
+# CI sets MIX_TEST_INCLUDE to the test tags it runs on top of the default
+# ones, separated by commas, such as the code generator tests that
+# test/test_helper.exs leaves out. Locally it is unset and `mix test` runs
+# the default tests.
+test_include =
+  case System.get_env("MIX_TEST_INCLUDE") do
+    tags when tags in [nil, ""] -> ""
+    tags -> tags |> String.split(",", trim: true) |> Enum.map_join(&(" --include " <> &1))
+  end
+
 [
   # Always run every tool. Without this, a run after a failure silently reruns
   # only the tools that failed last time, so a problem introduced while fixing
@@ -29,6 +39,8 @@ app_checks_base =
   skipped: false,
   tools: [
     # The built-in checks and the custom ones in priv/checks, see `mix help app_checks`
-    {:app_checks, "mix app_checks" <> app_checks_base}
+    {:app_checks, "mix app_checks" <> app_checks_base},
+    # The tests, with the tags CI includes
+    {:ex_unit, "mix test" <> test_include}
   ]
 ]

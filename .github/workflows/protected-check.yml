@@ -31,6 +31,11 @@ env:
   # and not against main. Empty on a push to main, where base_ref in
   # .app_checks.exs applies. Read by .check.exs.
   APP_CHECKS_BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
+  # Test tags left out of a local `mix test` and run here, separated by
+  # commas. The code generator tests fail in a project under a folder whose
+  # name starts with a dot, such as a Claude Code worktree, see
+  # test/test_helper.exs. Read by .check.exs.
+  MIX_TEST_INCLUDE: code_generators
 
 jobs:
   check:

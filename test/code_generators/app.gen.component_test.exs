@@ -1,6 +1,8 @@
 defmodule Mix.Tasks.App.Gen.ComponentTest do
   use ExUnit.Case, async: true
 
+  @moduletag :code_generators
+
   import Igniter.Test
 
   # The project built by `test_project/1` is called `:test`, so its web

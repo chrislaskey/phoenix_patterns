@@ -31,6 +31,14 @@
           # application has nothing old to tolerate, so every file counts
           {:core_component_tags, config: [paths: ["lib/app/web/components/core_components.ex"]]},
 
+          # A data context under schemas defines the callbacks `App.Data.Context`
+          # lets it override and nothing else: no other function, public or
+          # private. The callbacks are read from the module's `defoverridable`
+          # list, so a new one there is allowed at once. Other code goes in a
+          # module that calls the context. Lives in priv/checks
+          {:data_context_only_behaviour_functions,
+           config: [module: "lib/app/data/context.ex", paths: ["lib/app/data/schemas/**"]]},
+
           # Files that decide what gets checked or who reviews. A pull request
           # that changes a file in a group may change other files in the same
           # group and nothing else, so the change is the whole story and the
