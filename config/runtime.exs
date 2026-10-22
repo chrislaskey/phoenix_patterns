@@ -1,4 +1,7 @@
 import Config
+import Dotenvy
+
+source!([".env", System.get_env()])
 
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
@@ -16,11 +19,15 @@ import Config
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
-if System.get_env("PHX_SERVER") do
-  config :app, App.Web.Endpoint, server: true
-end
+if config_env() != :test do
+  if env!("PHX_SERVER", :boolean, false) do
+    config :app, App.Web.Endpoint, server: true
+  end
 
-config :app, App.Web.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+  config :app, App.Web.Endpoint, http: [port: env!("PORT", :integer, 4000)]
+
+  config :app, api_socket: env!("API_SOCKET", :boolean, false)
+end
 
 if config_env() == :dev do
   # Reload browser tabs when matching files change.
@@ -33,42 +40,22 @@ if config_env() == :dev do
         # Gettext translations
         ~r"priv/gettext/.*\.po$"E,
         # Router, Controllers, LiveViews and LiveComponents
-        ~r"lib/app_web/router\.ex$"E,
-        ~r"lib/app_web/(controllers|live|components)/.*\.(ex|heex)$"E
+        ~r"lib/app/router\.ex$"E,
+        ~r"lib/app/web/(controllers|live|components)/.*\.(ex|heex)$"E
       ]
     ]
 end
 
 if config_env() == :prod do
-  database_path =
-    System.get_env("DATABASE_PATH") ||
-      raise """
-      environment variable DATABASE_PATH is missing.
-      For example: /etc/app/app.db
-      """
-
   config :app, App.Repo,
-    database: database_path,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5")
+    database: env!("DATABASE_PATH", :string!),
+    pool_size: env!("POOL_SIZE", :integer, 5)
 
-  # The secret key base is used to sign/encrypt cookies and other secrets.
-  # A default value is used in config/dev.exs and config/test.exs but you
-  # want to use a different value for prod and you most likely don't want
-  # to check this value into version control, so we use an environment
-  # variable instead.
-  secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
-      raise """
-      environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
-      """
+  config :app, :dns_cluster_query, env!("DNS_CLUSTER_QUERY", :string?, nil)
 
-  host = System.get_env("PHX_HOST") || "example.com"
-
-  config :app, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
-
+  # Generate SECRET_KEY_BASE with `mix phx.gen.secret`
   config :app, App.Web.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: env!("PHX_HOST", :string!, "example.com"), port: 443, scheme: "https"],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
@@ -76,7 +63,7 @@ if config_env() == :prod do
       # for details about using IPv6 vs IPv4 and loopback vs public addresses.
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ],
-    secret_key_base: secret_key_base
+    secret_key_base: env!("SECRET_KEY_BASE", :string!)
 
   # ## SSL Support
   #
@@ -88,8 +75,8 @@ if config_env() == :prod do
   #         ...,
   #         port: 443,
   #         cipher_suite: :strong,
-  #         keyfile: System.get_env("SOME_APP_SSL_KEY_PATH"),
-  #         certfile: System.get_env("SOME_APP_SSL_CERT_PATH")
+  #         keyfile: env!("SOME_APP_SSL_KEY_PATH", :string!),
+  #         certfile: env!("SOME_APP_SSL_CERT_PATH", :string!)
   #       ]
   #
   # The `cipher_suite` is set to `:strong` to support only the
@@ -117,8 +104,8 @@ if config_env() == :prod do
   #
   #     config :app, App.Mailer,
   #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
+  #       api_key: env!("MAILGUN_API_KEY", :string!),
+  #       domain: env!("MAILGUN_DOMAIN", :string!)
   #
   # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
   # and Finch out-of-the-box. This configuration is typically done at

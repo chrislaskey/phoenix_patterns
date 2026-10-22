@@ -42,6 +42,14 @@ defmodule App.Web.ApiSocketTest do
     assert_receive %Phoenix.Socket.Broadcast{event: "disconnect"}
   end
 
+  test "refuses every connection when the API is off", %{token: token} do
+    Application.put_env(:app, :api_socket, false)
+    on_exit(fn -> Application.put_env(:app, :api_socket, true) end)
+
+    refute ApiSocket.enabled?()
+    assert :error = connect(ApiSocket, %{}, connect_info: %{auth_token: token})
+  end
+
   test "stays connected when the user changes their password", %{user: user, token: token} do
     {:ok, {_user, expired_tokens}} =
       Accounts.update_user_password(user, %{password: valid_user_password()})

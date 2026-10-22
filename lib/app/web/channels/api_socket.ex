@@ -21,6 +21,8 @@ defmodule App.Web.ApiSocket do
 
   The `phoenix` JavaScript client does this with its `authToken` option.
 
+  Refuses every connection unless `API_SOCKET=true`, see `config/runtime.exs`.
+
   The socket assigns `:current_scope` and `:api_token`, the row of the
   token it connected with. Its `id/1` is the token's session topic, so passing the token to
   `App.Web.UserAuth.disconnect_sessions/1` closes the connection. Changing
@@ -36,17 +38,18 @@ defmodule App.Web.ApiSocket do
 
   channel "api", App.Web.ApiChannel
 
+  def enabled?, do: Application.get_env(:app, :api_socket, false) == true
+
   @impl true
   def connect(_params, socket, %{auth_token: token}) when is_binary(token) do
-    case Accounts.get_user_api_token(token) do
-      %UserToken{user: user} = user_token ->
-        {:ok,
-         socket
-         |> assign(:current_scope, Scope.for_user(user))
-         |> assign(:api_token, %{user_token | user: nil})}
-
-      nil ->
-        :error
+    with true <- enabled?(),
+         %UserToken{user: user} = user_token <- Accounts.get_user_api_token(token) do
+      {:ok,
+       socket
+       |> assign(:current_scope, Scope.for_user(user))
+       |> assign(:api_token, %{user_token | user: nil})}
+    else
+      _ -> :error
     end
   end
 

@@ -45,5 +45,7 @@ npm-debug.log
 
 .claude
 
+/.env
+
 # Git worktrees made by other tools, kept in the repository root
 /.worktrees/

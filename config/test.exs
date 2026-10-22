@@ -20,6 +20,8 @@ config :app, App.Web.Endpoint,
   secret_key_base: "kzkKaX/cfT4k4N11wfsvyXoKEXuZeldR6Z2qzzjgT9rg2mhnAX4teDbnE6msWY/V",
   server: false
 
+config :app, api_socket: true
+
 # In test we don't send emails
 config :app, App.Mailer, adapter: Swoosh.Adapters.Test
 
