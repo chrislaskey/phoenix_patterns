@@ -1,7 +1,7 @@
 defmodule AppWeb.UserLive.Confirmation do
   use AppWeb, :live_view
 
-  alias App.Users
+  alias App.Accounts
 
   @impl true
   def render(assigns) do
@@ -21,7 +21,7 @@ defmodule AppWeb.UserLive.Confirmation do
           action={~p"/users/log-in?_action=confirmed"}
           phx-trigger-action={@trigger_submit}
         >
-          <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
+          <.input field={@form[:token]} type="hidden" />
           <.button
             name={@form[:remember_me].name}
             value="true"
@@ -44,7 +44,7 @@ defmodule AppWeb.UserLive.Confirmation do
           action={~p"/users/log-in"}
           phx-trigger-action={@trigger_submit}
         >
-          <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
+          <.input field={@form[:token]} type="hidden" />
           <%= if @current_scope do %>
             <.button phx-disable-with="Logging in..." class="btn btn-primary w-full">
               Log in
@@ -74,7 +74,7 @@ defmodule AppWeb.UserLive.Confirmation do
 
   @impl true
   def mount(%{"token" => token}, _session, socket) do
-    if user = Users.get_user_by_magic_link_token(token) do
+    if user = Accounts.get_user_by_magic_link_token(token) do
       form = to_form(%{"token" => token}, as: "user")
 
       {:ok, assign(socket, user: user, form: form, trigger_submit: false),

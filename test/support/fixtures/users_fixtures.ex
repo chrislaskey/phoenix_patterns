@@ -1,13 +1,17 @@
-defmodule App.UsersFixtures do
+defmodule App.Data.UsersFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  entities via the `App.Users` context.
+  entities via the `App.Data.Users` context and `App.Accounts`.
   """
 
   import Ecto.Query
 
-  alias App.Users
-  alias App.Users.Scope
+  alias App.Accounts
+  alias App.Data.User
+  alias App.Data.Users
+  alias App.Data.UserToken
+  alias App.Data.UserTokens
+  alias AppWeb.Scope
 
   def unique_user_email, do: "user#{System.unique_integer()}@example.com"
   def valid_user_password, do: "hello world!"
@@ -22,7 +26,7 @@ defmodule App.UsersFixtures do
     {:ok, user} =
       attrs
       |> valid_user_attributes()
-      |> Users.register_user()
+      |> Users.create(changesets: &User.registration_changeset/3)
 
     user
   end
@@ -32,11 +36,10 @@ defmodule App.UsersFixtures do
 
     token =
       extract_user_token(fn url ->
-        Users.deliver_login_instructions(user, url)
+        Accounts.deliver_login_instructions(user, url)
       end)
 
-    {:ok, {user, _expired_tokens}} =
-      Users.login_user_by_magic_link(token)
+    {:ok, {user, _expired_tokens}} = Accounts.login_user_by_magic_link(token)
 
     user
   end
@@ -52,7 +55,7 @@ defmodule App.UsersFixtures do
 
   def set_password(user) do
     {:ok, {user, _expired_tokens}} =
-      Users.update_user_password(user, %{password: valid_user_password()})
+      Accounts.update_user_password(user, %{password: valid_user_password()})
 
     user
   end
@@ -65,7 +68,7 @@ defmodule App.UsersFixtures do
 
   def override_token_authenticated_at(token, authenticated_at) when is_binary(token) do
     App.Repo.update_all(
-      from(t in Users.UserToken,
+      from(t in UserToken,
         where: t.token == ^token
       ),
       set: [authenticated_at: authenticated_at]
@@ -73,16 +76,17 @@ defmodule App.UsersFixtures do
   end
 
   def generate_user_magic_link_token(user) do
-    {encoded_token, user_token} = Users.UserToken.build_email_token(user, "login")
-    App.Repo.insert!(user_token)
-    {encoded_token, user_token.token}
+    {:ok, user_token} =
+      UserTokens.create(%{user_id: user.id, sent_to: user.email, context: "login"})
+
+    {user_token.encoded, user_token.token}
   end
 
   def offset_user_token(token, amount_to_add, unit) do
     dt = DateTime.add(DateTime.utc_now(:second), amount_to_add, unit)
 
     App.Repo.update_all(
-      from(ut in Users.UserToken, where: ut.token == ^token),
+      from(ut in UserToken, where: ut.token == ^token),
       set: [inserted_at: dt, authenticated_at: dt]
     )
   end

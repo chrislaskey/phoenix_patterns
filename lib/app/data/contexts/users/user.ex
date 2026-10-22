@@ -1,4 +1,4 @@
-defmodule App.Users.User do
+defmodule App.Data.User do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -10,6 +10,13 @@ defmodule App.Users.User do
     field :authenticated_at, :utc_datetime, virtual: true
 
     timestamps(type: :utc_datetime)
+  end
+
+  @doc """
+  A user changeset for registering a new user.
+  """
+  def registration_changeset(user, attrs, opts \\ []) do
+    email_changeset(user, attrs, opts)
   end
 
   @doc """
@@ -107,26 +114,10 @@ defmodule App.Users.User do
   end
 
   @doc """
-  Confirms the account by setting `confirmed_at`.
+  Confirms the account by setting `confirmed_at`. Reads no params.
   """
-  def confirm_changeset(user) do
+  def confirm_changeset(user, _params \\ %{}, _opts \\ []) do
     now = DateTime.utc_now(:second)
     change(user, confirmed_at: now)
-  end
-
-  @doc """
-  Verifies the password.
-
-  If there is no user or the user doesn't have a password, we call
-  `Bcrypt.no_user_verify/0` to avoid timing attacks.
-  """
-  def valid_password?(%App.Users.User{hashed_password: hashed_password}, password)
-      when is_binary(hashed_password) and byte_size(password) > 0 do
-    Bcrypt.verify_pass(password, hashed_password)
-  end
-
-  def valid_password?(_, _) do
-    Bcrypt.no_user_verify()
-    false
   end
 end

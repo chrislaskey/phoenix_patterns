@@ -10,13 +10,13 @@ import Config
 config :app, :scopes,
   user: [
     default: true,
-    module: App.Users.Scope,
+    module: AppWeb.Scope,
     assign_key: :current_scope,
     access_path: [:user, :id],
     schema_key: :user_id,
     schema_type: :id,
     schema_table: :users,
-    test_data_fixture: App.UsersFixtures,
+    test_data_fixture: App.Data.UsersFixtures,
     test_setup_helper: :register_and_log_in_user
   ]
 

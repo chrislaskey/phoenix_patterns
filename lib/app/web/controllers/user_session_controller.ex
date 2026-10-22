@@ -1,7 +1,7 @@
 defmodule AppWeb.UserSessionController do
   use AppWeb, :controller
 
-  alias App.Users
+  alias App.Accounts
   alias AppWeb.UserAuth
 
   def create(conn, %{"_action" => "confirmed"} = params) do
@@ -14,7 +14,7 @@ defmodule AppWeb.UserSessionController do
 
   # magic link login
   defp create(conn, %{"user" => %{"token" => token} = user_params}, info) do
-    case Users.login_user_by_magic_link(token) do
+    case Accounts.login_user_by_magic_link(token) do
       {:ok, {user, tokens_to_disconnect}} ->
         UserAuth.disconnect_sessions(tokens_to_disconnect)
 
@@ -33,7 +33,7 @@ defmodule AppWeb.UserSessionController do
   defp create(conn, %{"user" => user_params}, info) do
     %{"email" => email, "password" => password} = user_params
 
-    if user = Users.get_user_by_email_and_password(email, password) do
+    if user = Accounts.get_user_by_email_and_password(email, password) do
       conn
       |> put_flash(:info, info)
       |> UserAuth.log_in_user(user, user_params)
@@ -48,8 +48,8 @@ defmodule AppWeb.UserSessionController do
 
   def update_password(conn, %{"user" => user_params} = params) do
     user = conn.assigns.current_scope.user
-    true = Users.sudo_mode?(user)
-    {:ok, {_user, expired_tokens}} = Users.update_user_password(user, user_params)
+    true = Accounts.sudo_mode?(user)
+    {:ok, {_user, expired_tokens}} = Accounts.update_user_password(user, user_params)
 
     # disconnect all existing LiveViews with old sessions
     UserAuth.disconnect_sessions(expired_tokens)

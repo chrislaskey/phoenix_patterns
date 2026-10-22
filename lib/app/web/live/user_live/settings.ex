@@ -3,7 +3,9 @@ defmodule AppWeb.UserLive.Settings do
 
   on_mount {AppWeb.UserAuth, :require_sudo_mode}
 
-  alias App.Users
+  alias App.Accounts
+  alias App.Data.User
+  alias App.Data.Users
 
   @impl true
   def render(assigns) do
@@ -39,8 +41,8 @@ defmodule AppWeb.UserLive.Settings do
         phx-submit="update_password"
         phx-trigger-action={@trigger_submit}
       >
-        <input
-          name={@password_form[:email].name}
+        <.input
+          field={@password_form[:email]}
           type="hidden"
           id="hidden_user_email"
           spellcheck="false"
@@ -72,7 +74,7 @@ defmodule AppWeb.UserLive.Settings do
   @impl true
   def mount(%{"token" => token}, _session, socket) do
     socket =
-      case Users.update_user_email(socket.assigns.current_scope.user, token) do
+      case Accounts.update_user_email(socket.assigns.current_scope.user, token) do
         {:ok, _user} ->
           put_flash(socket, :info, "Email changed successfully.")
 
@@ -85,8 +87,12 @@ defmodule AppWeb.UserLive.Settings do
 
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
-    email_changeset = Users.change_user_email(user, %{}, validate_unique: false)
-    password_changeset = Users.change_user_password(user, %{}, hash_password: false)
+
+    email_changeset =
+      Users.change(user, %{}, changesets: &User.email_changeset/3, validate_unique: false)
+
+    password_changeset =
+      Users.change(user, %{}, changesets: &User.password_changeset/3, hash_password: false)
 
     socket =
       socket
@@ -104,7 +110,7 @@ defmodule AppWeb.UserLive.Settings do
 
     email_form =
       socket.assigns.current_scope.user
-      |> Users.change_user_email(user_params, validate_unique: false)
+      |> Users.change(user_params, changesets: &User.email_changeset/3, validate_unique: false)
       |> Map.put(:action, :validate)
       |> to_form()
 
@@ -114,11 +120,11 @@ defmodule AppWeb.UserLive.Settings do
   def handle_event("update_email", params, socket) do
     %{"user" => user_params} = params
     user = socket.assigns.current_scope.user
-    true = Users.sudo_mode?(user)
+    true = Accounts.sudo_mode?(user)
 
-    case Users.change_user_email(user, user_params) do
+    case Users.change(user, user_params, changesets: &User.email_changeset/3) do
       %{valid?: true} = changeset ->
-        Users.deliver_user_update_email_instructions(
+        Accounts.deliver_user_update_email_instructions(
           Ecto.Changeset.apply_action!(changeset, :insert),
           user.email,
           &url(~p"/users/settings/confirm-email/#{&1}")
@@ -137,7 +143,7 @@ defmodule AppWeb.UserLive.Settings do
 
     password_form =
       socket.assigns.current_scope.user
-      |> Users.change_user_password(user_params, hash_password: false)
+      |> Users.change(user_params, changesets: &User.password_changeset/3, hash_password: false)
       |> Map.put(:action, :validate)
       |> to_form()
 
@@ -147,9 +153,9 @@ defmodule AppWeb.UserLive.Settings do
   def handle_event("update_password", params, socket) do
     %{"user" => user_params} = params
     user = socket.assigns.current_scope.user
-    true = Users.sudo_mode?(user)
+    true = Accounts.sudo_mode?(user)
 
-    case Users.change_user_password(user, user_params) do
+    case Users.change(user, user_params, changesets: &User.password_changeset/3) do
       %{valid?: true} = changeset ->
         {:noreply, assign(socket, trigger_submit: true, password_form: to_form(changeset))}
 

@@ -1,8 +1,9 @@
 defmodule AppWeb.UserLive.Registration do
   use AppWeb, :live_view
 
-  alias App.Users
-  alias App.Users.User
+  alias App.Accounts
+  alias App.Data.User
+  alias App.Data.Users
 
   @impl true
   def render(assigns) do
@@ -49,17 +50,18 @@ defmodule AppWeb.UserLive.Registration do
   end
 
   def mount(_params, _session, socket) do
-    changeset = Users.change_user_email(%User{}, %{}, validate_unique: false)
+    changeset =
+      Users.change(%User{}, %{}, changesets: &User.email_changeset/3, validate_unique: false)
 
     {:ok, assign_form(socket, changeset), temporary_assigns: [form: nil]}
   end
 
   @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
-    case Users.register_user(user_params) do
+    case Users.create(user_params, changesets: &User.registration_changeset/3) do
       {:ok, user} ->
         {:ok, _} =
-          Users.deliver_login_instructions(
+          Accounts.deliver_login_instructions(
             user,
             &url(~p"/users/log-in/#{&1}")
           )
@@ -78,7 +80,12 @@ defmodule AppWeb.UserLive.Registration do
   end
 
   def handle_event("validate", %{"user" => user_params}, socket) do
-    changeset = Users.change_user_email(%User{}, user_params, validate_unique: false)
+    changeset =
+      Users.change(%User{}, user_params,
+        changesets: &User.email_changeset/3,
+        validate_unique: false
+      )
+
     {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
   end
 

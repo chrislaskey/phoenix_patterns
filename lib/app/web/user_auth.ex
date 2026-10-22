@@ -1,14 +1,25 @@
 defmodule AppWeb.UserAuth do
+  @moduledoc """
+  Logs users in and out, and resolves the signed-in user of a request or
+  LiveView into a `current_scope`.
+
+  A session is a `"session"` token of `App.Data.UserTokens`, kept in the
+  session and, when asked to remember the user, in a signed cookie.
+  Logging out deletes it, and changing the password deletes every one of
+  the user's tokens and disconnects their LiveViews.
+  """
+
   use AppWeb, :verified_routes
 
   import Plug.Conn
   import Phoenix.Controller
 
-  alias App.Users
-  alias App.Users.Scope
+  alias App.Accounts
+  alias App.Data.User
+  alias AppWeb.Scope
 
   # Make the remember me cookie valid for 14 days. This should match
-  # the session validity setting in UserToken.
+  # the session validity setting in UserTokens.
   @max_cookie_age_in_days 14
   @remember_me_cookie "_app_web_user_remember_me"
   @remember_me_options [
@@ -48,7 +59,7 @@ defmodule AppWeb.UserAuth do
   """
   def log_out_user(conn) do
     user_token = get_session(conn, :user_token)
-    user_token && Users.delete_user_session_token(user_token)
+    user_token && Accounts.delete_user_session_token(user_token)
 
     if live_socket_id = get_session(conn, :live_socket_id) do
       AppWeb.Endpoint.broadcast(live_socket_id, "disconnect", %{})
@@ -67,7 +78,7 @@ defmodule AppWeb.UserAuth do
   """
   def fetch_current_scope_for_user(conn, _opts) do
     with {token, conn} <- ensure_user_token(conn),
-         {user, token_inserted_at} <- Users.get_user_by_session_token(token) do
+         {user, token_inserted_at} <- Accounts.get_user_by_session_token(token) do
       conn
       |> assign(:current_scope, Scope.for_user(user))
       |> maybe_reissue_user_session_token(user, token_inserted_at)
@@ -110,7 +121,7 @@ defmodule AppWeb.UserAuth do
   # function will clear the session to avoid fixation attacks. See the
   # renew_session function to customize this behaviour.
   defp create_or_extend_session(conn, user, params) do
-    token = Users.generate_user_session_token(user)
+    token = Accounts.generate_user_session_token(user)
     remember_me = get_session(conn, :user_remember_me)
 
     conn
@@ -234,7 +245,7 @@ defmodule AppWeb.UserAuth do
   def on_mount(:require_sudo_mode, _params, session, socket) do
     socket = mount_current_scope(socket, session)
 
-    if Users.sudo_mode?(socket.assigns.current_scope.user, -10) do
+    if Accounts.sudo_mode?(socket.assigns.current_scope.user, -10) do
       {:cont, socket}
     else
       socket =
@@ -250,7 +261,7 @@ defmodule AppWeb.UserAuth do
     Phoenix.Component.assign_new(socket, :current_scope, fn ->
       {user, _} =
         if user_token = session["user_token"] do
-          Users.get_user_by_session_token(user_token)
+          Accounts.get_user_by_session_token(user_token)
         end || {nil, nil}
 
       Scope.for_user(user)
@@ -259,7 +270,7 @@ defmodule AppWeb.UserAuth do
 
   @doc "Returns the path to redirect to after log in."
   # the user was already logged in, redirect to settings
-  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Users.User{}}}}) do
+  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %User{}}}}) do
     ~p"/users/settings"
   end
 

@@ -1,8 +1,13 @@
-defmodule App.Users.UserNotifier do
+defmodule App.Accounts.Email do
+  @moduledoc """
+  Builds and delivers the emails sent to users, such as magic links and
+  email change confirmations.
+  """
+
   import Swoosh.Email
 
+  alias App.Data.User
   alias App.Mailer
-  alias App.Users.User
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do

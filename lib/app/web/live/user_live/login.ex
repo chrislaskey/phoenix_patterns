@@ -1,7 +1,8 @@
 defmodule AppWeb.UserLive.Login do
   use AppWeb, :live_view
 
-  alias App.Users
+  alias App.Accounts
+  alias App.Data.Users
 
   @impl true
   def render(assigns) do
@@ -112,8 +113,8 @@ defmodule AppWeb.UserLive.Login do
   end
 
   def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
-    if user = Users.get_user_by_email(email) do
-      Users.deliver_login_instructions(
+    if user = Users.get_by(email: email) do
+      Accounts.deliver_login_instructions(
         user,
         &url(~p"/users/log-in/#{&1}")
       )

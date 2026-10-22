@@ -1,8 +1,8 @@
 defmodule AppWeb.UserSessionControllerTest do
   use AppWeb.ConnCase
 
-  import App.UsersFixtures
-  alias App.Users
+  import App.Data.UsersFixtures
+  alias App.Data.Users
 
   setup do
     %{unconfirmed_user: unconfirmed_user_fixture(), user: user_fixture()}
@@ -106,7 +106,7 @@ defmodule AppWeb.UserSessionControllerTest do
       assert redirected_to(conn) == ~p"/"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "User confirmed successfully."
 
-      assert Users.get_user!(user.id).confirmed_at
+      assert Users.get(user.id).confirmed_at
 
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")

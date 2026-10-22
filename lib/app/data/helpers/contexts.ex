@@ -61,12 +61,23 @@ defmodule App.Data.Helpers.Contexts do
   # Changesets
 
   def changeset(schema, record, params, options) do
-    if changesets = Keyword.get(options, :changesets) do
-      changesets
-      |> List.wrap()
-      |> Enum.reduce(record, fn changeset, record -> changeset.(record, params, options) end)
-    else
+    case Keyword.get(options, :changesets) do
+      nil ->
+        default_changeset(schema, record, params, options)
+
+      changesets ->
+        changesets
+        |> List.wrap()
+        |> Enum.reduce(record, fn changeset, record -> changeset.(record, params, options) end)
+    end
+  end
+
+  defp default_changeset(schema, record, params, options) do
+    if Code.ensure_loaded?(schema) and function_exported?(schema, :changeset, 3) do
       schema.changeset(record, params, options)
+    else
+      raise ArgumentError,
+            "#{inspect(schema)} has no changeset/3, pass the changesets to apply in the :changesets option"
     end
   end
 end

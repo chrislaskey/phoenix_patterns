@@ -2,7 +2,7 @@ defmodule AppWeb.UserLive.LoginTest do
   use AppWeb.ConnCase
 
   import Phoenix.LiveViewTest
-  import App.UsersFixtures
+  import App.Data.UsersFixtures
 
   describe "login page" do
     test "renders login page", %{conn: conn} do
@@ -27,7 +27,7 @@ defmodule AppWeb.UserLive.LoginTest do
 
       assert html =~ "If your email is in our system"
 
-      assert App.Repo.get_by!(App.Users.UserToken, user_id: user.id).context ==
+      assert App.Repo.get_by!(App.Data.UserToken, user_id: user.id).context ==
                "login"
     end
 

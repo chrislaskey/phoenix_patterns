@@ -2,7 +2,7 @@ defmodule AppWeb.UserLive.RegistrationTest do
   use AppWeb.ConnCase
 
   import Phoenix.LiveViewTest
-  import App.UsersFixtures
+  import App.Data.UsersFixtures
 
   describe "Registration page" do
     test "renders registration page", %{conn: conn} do
