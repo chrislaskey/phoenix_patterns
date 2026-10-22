@@ -1,5 +1,5 @@
-defmodule AppWeb.UserLive.RegistrationTest do
-  use AppWeb.ConnCase
+defmodule App.Web.UserLive.RegistrationTest do
+  use App.Web.ConnCase
 
   import Phoenix.LiveViewTest
   import App.Data.UsersFixtures

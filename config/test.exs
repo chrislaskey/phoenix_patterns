@@ -15,7 +15,7 @@ config :app, App.Repo,
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
-config :app, AppWeb.Endpoint,
+config :app, App.Web.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "kzkKaX/cfT4k4N11wfsvyXoKEXuZeldR6Z2qzzjgT9rg2mhnAX4teDbnE6msWY/V",
   server: false

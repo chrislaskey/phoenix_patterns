@@ -1,5 +1,5 @@
-defmodule AppWeb.UserLive.SettingsTest do
-  use AppWeb.ConnCase
+defmodule App.Web.UserLive.SettingsTest do
+  use App.Web.ConnCase
 
   alias App.Accounts
   alias App.Data.Users

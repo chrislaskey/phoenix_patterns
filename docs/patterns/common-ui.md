@@ -75,7 +75,7 @@ The generated theme toggle in the layout used raw buttons:
 
 ```
 lib/app_web/components/layouts.ex:134: <button> may be a raw tag [core_component_tags, potential]
-lib/app_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from AppWeb.CoreComponents [core_component_tags, confirmed]
+lib/app_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from App.Web.CoreComponents [core_component_tags, confirmed]
 ```
 
 The fix is the dot. `class`, `phx-click` and `data-` attributes pass through

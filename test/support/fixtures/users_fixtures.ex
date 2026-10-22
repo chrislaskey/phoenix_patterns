@@ -11,7 +11,7 @@ defmodule App.Data.UsersFixtures do
   alias App.Data.Users
   alias App.Data.UserToken
   alias App.Data.UserTokens
-  alias AppWeb.Scope
+  alias App.Web.Scope
 
   def unique_user_email, do: "user#{System.unique_integer()}@example.com"
   def valid_user_password, do: "hello world!"

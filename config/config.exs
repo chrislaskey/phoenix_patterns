@@ -10,7 +10,7 @@ import Config
 config :app, :scopes,
   user: [
     default: true,
-    module: AppWeb.Scope,
+    module: App.Web.Scope,
     assign_key: :current_scope,
     access_path: [:user, :id],
     schema_key: :user_id,
@@ -25,11 +25,11 @@ config :app,
   generators: [timestamp_type: :utc_datetime]
 
 # Configure the endpoint
-config :app, AppWeb.Endpoint,
+config :app, App.Web.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: AppWeb.ErrorHTML, json: AppWeb.ErrorJSON],
+    formats: [html: App.Web.ErrorHTML, json: App.Web.ErrorJSON],
     layout: false
   ],
   pubsub_server: App.PubSub,

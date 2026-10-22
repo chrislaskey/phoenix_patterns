@@ -1,4 +1,4 @@
-defmodule AppWeb.Telemetry do
+defmodule App.Web.Telemetry do
   use Supervisor
   import Telemetry.Metrics
 
@@ -87,7 +87,7 @@ defmodule AppWeb.Telemetry do
     [
       # A module, function and arguments to be invoked periodically.
       # This function must call :telemetry.execute/3 and a metric must be added above.
-      # {AppWeb, :count_users, []}
+      # {App.Web, :count_users, []}
     ]
   end
 end

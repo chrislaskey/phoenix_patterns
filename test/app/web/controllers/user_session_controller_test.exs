@@ -1,5 +1,5 @@
-defmodule AppWeb.UserSessionControllerTest do
-  use AppWeb.ConnCase
+defmodule App.Web.UserSessionControllerTest do
+  use App.Web.ConnCase
 
   import App.Data.UsersFixtures
   alias App.Data.Users

@@ -43,8 +43,8 @@ string mentions `<button>` on line 24 and a template uses one on line 134,
 and a page template uses a raw `<input>`:
 
 ```
-lib/app_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from AppWeb.CoreComponents [core_component_tags, error]
-lib/app_web/controllers/page_html/home.html.heex:12: <input> is a raw tag, use <.input> from AppWeb.CoreComponents [core_component_tags, error]
+lib/app_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from App.Web.CoreComponents [core_component_tags, error]
+lib/app_web/controllers/page_html/home.html.heex:12: <input> is a raw tag, use <.input> from App.Web.CoreComponents [core_component_tags, error]
 lib/app_web/components/layouts.ex: ask an architect to review this change [architect_review, warning]
 4 check(s), 2 error(s), 1 warning(s)
 ```

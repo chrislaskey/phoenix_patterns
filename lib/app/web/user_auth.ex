@@ -1,4 +1,4 @@
-defmodule AppWeb.UserAuth do
+defmodule App.Web.UserAuth do
   @moduledoc """
   Logs users in and out, and resolves the signed-in user of a request or
   LiveView into a `current_scope`.
@@ -9,14 +9,14 @@ defmodule AppWeb.UserAuth do
   the user's tokens and disconnects their LiveViews.
   """
 
-  use AppWeb, :verified_routes
+  use App.Web, :verified_routes
 
   import Plug.Conn
   import Phoenix.Controller
 
   alias App.Accounts
   alias App.Data.User
-  alias AppWeb.Scope
+  alias App.Web.Scope
 
   # Make the remember me cookie valid for 14 days. This should match
   # the session validity setting in UserTokens.
@@ -62,7 +62,7 @@ defmodule AppWeb.UserAuth do
     user_token && Accounts.delete_user_session_token(user_token)
 
     if live_socket_id = get_session(conn, :live_socket_id) do
-      AppWeb.Endpoint.broadcast(live_socket_id, "disconnect", %{})
+      App.Web.Endpoint.broadcast(live_socket_id, "disconnect", %{})
     end
 
     conn
@@ -185,7 +185,7 @@ defmodule AppWeb.UserAuth do
   """
   def disconnect_sessions(tokens) do
     Enum.each(tokens, fn %{token: token} ->
-      AppWeb.Endpoint.broadcast(user_session_topic(token), "disconnect", %{})
+      App.Web.Endpoint.broadcast(user_session_topic(token), "disconnect", %{})
     end)
   end
 
@@ -210,16 +210,16 @@ defmodule AppWeb.UserAuth do
   Use the `on_mount` lifecycle macro in LiveViews to mount or authenticate
   the `current_scope`:
 
-      defmodule AppWeb.PageLive do
-        use AppWeb, :live_view
+      defmodule App.Web.PageLive do
+        use App.Web, :live_view
 
-        on_mount {AppWeb.UserAuth, :mount_current_scope}
+        on_mount {App.Web.UserAuth, :mount_current_scope}
         ...
       end
 
   Or use the `live_session` of your router to invoke the on_mount callback:
 
-      live_session :authenticated, on_mount: [{AppWeb.UserAuth, :require_authenticated}] do
+      live_session :authenticated, on_mount: [{App.Web.UserAuth, :require_authenticated}] do
         live "/profile", ProfileLive, :index
       end
   """

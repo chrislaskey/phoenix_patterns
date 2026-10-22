@@ -1,9 +1,9 @@
-defmodule AppWeb.UserAuthTest do
-  use AppWeb.ConnCase
+defmodule App.Web.UserAuthTest do
+  use App.Web.ConnCase
 
   alias App.Accounts
-  alias AppWeb.Scope
-  alias AppWeb.UserAuth
+  alias App.Web.Scope
+  alias App.Web.UserAuth
   alias Phoenix.LiveView
 
   import App.Data.UsersFixtures
@@ -14,7 +14,7 @@ defmodule AppWeb.UserAuthTest do
   setup %{conn: conn} do
     conn =
       conn
-      |> Map.replace!(:secret_key_base, AppWeb.Endpoint.config(:secret_key_base))
+      |> Map.replace!(:secret_key_base, App.Web.Endpoint.config(:secret_key_base))
       |> init_test_session(%{})
 
     %{user: %{user_fixture() | authenticated_at: DateTime.utc_now(:second)}, conn: conn}
@@ -102,7 +102,7 @@ defmodule AppWeb.UserAuthTest do
       conn =
         conn
         |> recycle()
-        |> Map.replace!(:secret_key_base, AppWeb.Endpoint.config(:secret_key_base))
+        |> Map.replace!(:secret_key_base, App.Web.Endpoint.config(:secret_key_base))
         |> fetch_cookies()
         |> init_test_session(%{user_remember_me: true})
 
@@ -137,7 +137,7 @@ defmodule AppWeb.UserAuthTest do
 
     test "broadcasts to the given live_socket_id", %{conn: conn} do
       live_socket_id = "users_sessions:abcdef-token"
-      AppWeb.Endpoint.subscribe(live_socket_id)
+      App.Web.Endpoint.subscribe(live_socket_id)
 
       conn
       |> put_session(:live_socket_id, live_socket_id)
@@ -272,7 +272,7 @@ defmodule AppWeb.UserAuthTest do
       session = conn |> put_session(:user_token, user_token) |> get_session()
 
       socket = %LiveView.Socket{
-        endpoint: AppWeb.Endpoint,
+        endpoint: App.Web.Endpoint,
         assigns: %{__changed__: %{}, flash: %{}}
       }
 
@@ -284,7 +284,7 @@ defmodule AppWeb.UserAuthTest do
       session = conn |> get_session()
 
       socket = %LiveView.Socket{
-        endpoint: AppWeb.Endpoint,
+        endpoint: App.Web.Endpoint,
         assigns: %{__changed__: %{}, flash: %{}}
       }
 
@@ -299,7 +299,7 @@ defmodule AppWeb.UserAuthTest do
       session = conn |> put_session(:user_token, user_token) |> get_session()
 
       socket = %LiveView.Socket{
-        endpoint: AppWeb.Endpoint,
+        endpoint: App.Web.Endpoint,
         assigns: %{__changed__: %{}, flash: %{}}
       }
 
@@ -316,7 +316,7 @@ defmodule AppWeb.UserAuthTest do
       session = conn |> put_session(:user_token, user_token) |> get_session()
 
       socket = %LiveView.Socket{
-        endpoint: AppWeb.Endpoint,
+        endpoint: App.Web.Endpoint,
         assigns: %{__changed__: %{}, flash: %{}}
       }
 
@@ -382,7 +382,7 @@ defmodule AppWeb.UserAuthTest do
       tokens = [%{token: "token1"}, %{token: "token2"}]
 
       for %{token: token} <- tokens do
-        AppWeb.Endpoint.subscribe("users_sessions:#{Base.url_encode64(token)}")
+        App.Web.Endpoint.subscribe("users_sessions:#{Base.url_encode64(token)}")
       end
 
       UserAuth.disconnect_sessions(tokens)

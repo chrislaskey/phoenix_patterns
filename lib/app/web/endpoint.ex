@@ -1,4 +1,4 @@
-defmodule AppWeb.Endpoint do
+defmodule App.Web.Endpoint do
   use Phoenix.Endpoint, otp_app: :app
 
   # The session will be stored in the cookie and signed,
@@ -24,7 +24,7 @@ defmodule AppWeb.Endpoint do
     at: "/",
     from: :app,
     gzip: not code_reloading?,
-    only: AppWeb.static_paths(),
+    only: App.Web.static_paths(),
     raise_on_missing_only: code_reloading?
 
   # Code reloading can be explicitly enabled under the

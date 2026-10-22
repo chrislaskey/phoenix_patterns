@@ -1,5 +1,5 @@
-defmodule AppWeb.UserLive.ConfirmationTest do
-  use AppWeb.ConnCase
+defmodule App.Web.UserLive.ConfirmationTest do
+  use App.Web.ConnCase
 
   import Phoenix.LiveViewTest
   import App.Data.UsersFixtures

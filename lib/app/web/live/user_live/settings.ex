@@ -1,7 +1,7 @@
-defmodule AppWeb.UserLive.Settings do
-  use AppWeb, :live_view
+defmodule App.Web.UserLive.Settings do
+  use App.Web, :live_view
 
-  on_mount {AppWeb.UserAuth, :require_sudo_mode}
+  on_mount {App.Web.UserAuth, :require_sudo_mode}
 
   alias App.Accounts
   alias App.Data.User

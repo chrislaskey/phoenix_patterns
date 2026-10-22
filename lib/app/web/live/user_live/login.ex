@@ -1,5 +1,5 @@
-defmodule AppWeb.UserLive.Login do
-  use AppWeb, :live_view
+defmodule App.Web.UserLive.Login do
+  use App.Web, :live_view
 
   alias App.Accounts
   alias App.Data.Users

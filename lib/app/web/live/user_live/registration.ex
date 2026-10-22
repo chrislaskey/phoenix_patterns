@@ -1,5 +1,5 @@
-defmodule AppWeb.UserLive.Registration do
-  use AppWeb, :live_view
+defmodule App.Web.UserLive.Registration do
+  use App.Web, :live_view
 
   alias App.Accounts
   alias App.Data.User
@@ -46,7 +46,7 @@ defmodule AppWeb.UserLive.Registration do
   @impl true
   def mount(_params, _session, %{assigns: %{current_scope: %{user: user}}} = socket)
       when not is_nil(user) do
-    {:ok, redirect(socket, to: AppWeb.UserAuth.signed_in_path(socket))}
+    {:ok, redirect(socket, to: App.Web.UserAuth.signed_in_path(socket))}
   end
 
   def mount(_params, _session, socket) do

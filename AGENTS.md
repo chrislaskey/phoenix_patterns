@@ -18,7 +18,7 @@ This is a web application written using the Phoenix web framework.
 ### Phoenix v1.8 guidelines
 
 - **Always** begin your LiveView templates with `<Layouts.app flash={@flash} ...>` which wraps all inner content
-- The `MyAppWeb.Layouts` module is aliased in the `my_app_web.ex` file, so you can use it without needing to alias it again
+- The `MyApp.Web.Layouts` module is aliased in the `my_app_web.ex` file, so you can use it without needing to alias it again
 - Anytime you run into errors with no `current_scope` assign:
   - You failed to follow the Authenticated Routes guidelines, or you failed to pass `current_scope` to `<Layouts.app>`
   - **Always** fix the `current_scope` error by moving your routes to the proper `live_session` and ensure you pass `current_scope` as needed
@@ -76,11 +76,11 @@ custom classes must fully style the input
 
 LiveViews that require login should **always be placed inside the __existing__ `live_session :require_authenticated_user` block**:
 
-    scope "/", AppWeb do
+    scope "/", App.Web do
       pipe_through [:browser, :require_authenticated_user]
 
       live_session :require_authenticated_user,
-        on_mount: [{AppWeb.UserAuth, :require_authenticated}] do
+        on_mount: [{App.Web.UserAuth, :require_authenticated}] do
         # phx.gen.auth generated routes
         live "/users/settings", UserLive.Settings, :edit
         live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
@@ -91,7 +91,7 @@ LiveViews that require login should **always be placed inside the __existing__ `
 
 Controller routes must be placed in a scope that sets the `:require_authenticated_user` plug:
 
-    scope "/", AppWeb do
+    scope "/", App.Web do
       pipe_through [:browser, :require_authenticated_user]
 
       get "/", MyControllerThatRequiresAuth, :index
@@ -101,11 +101,11 @@ Controller routes must be placed in a scope that sets the `:require_authenticate
 
 LiveViews that can work with or without authentication, **always use the __existing__ `:current_user` scope**, ie:
 
-    scope "/", MyAppWeb do
+    scope "/", MyApp.Web do
       pipe_through [:browser]
 
       live_session :current_user,
-        on_mount: [{AppWeb.UserAuth, :mount_current_scope}] do
+        on_mount: [{App.Web.UserAuth, :mount_current_scope}] do
         # our own routes that work with or without authentication
         live "/", PublicLive
       end
@@ -181,13 +181,13 @@ Controllers automatically have the `current_scope` available if they use the `:b
 
 - You **never** need to create your own `alias` for route definitions! The `scope` provides the alias, ie:
 
-      scope "/admin", AppWeb.Admin do
+      scope "/admin", App.Web.Admin do
         pipe_through :browser
 
         live "/users", UserLive, :index
       end
 
-  the UserLive route would point to the `AppWeb.Admin.UserLive` module
+  the UserLive route would point to the `App.Web.Admin.UserLive` module
 
 - `Phoenix.View` no longer is needed or included with Phoenix, don't use it
 <!-- phoenix:phoenix-end -->
@@ -211,7 +211,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
 - **Always** use the imported `Phoenix.Component.form/1` and `Phoenix.Component.inputs_for/1` function to build forms. **Never** use `Phoenix.HTML.form_for` or `Phoenix.HTML.inputs_for` as they are outdated
 - When building forms **always** use the already imported `Phoenix.Component.to_form/2` (`assign(socket, form: to_form(...))` and `<.form for={@form} id="msg-form">`), then access those forms in the template via `@form[:field]`
 - **Always** add unique DOM IDs to key elements (like forms, buttons, etc) when writing templates, these IDs can later be used in tests (`<.form for={@form} id="product-form">`)
-- For "app wide" template imports, you can import/alias into the `my_app_web.ex`'s `html_helpers` block, so they will be available to all LiveViews, LiveComponent's, and all modules that do `use MyAppWeb, :html` (replace "my_app" by the actual app name)
+- For "app wide" template imports, you can import/alias into the `my_app_web.ex`'s `html_helpers` block, so they will be available to all LiveViews, LiveComponent's, and all modules that do `use MyApp.Web, :html` (replace "my_app" by the actual app name)
 
 - Elixir supports `if/else` but **does NOT support `if/else if` or `if/elsif`**. **Never use `else if` or `elseif` in Elixir**, **always** use `cond` or `case` for multiple conditionals.
 
@@ -288,7 +288,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
 
 - **Never** use the deprecated `live_redirect` and `live_patch` functions, instead **always** use the `<.link navigate={href}>` and  `<.link patch={href}>` in templates, and `push_navigate` and `push_patch` functions LiveViews
 - **Avoid LiveComponent's** unless you have a strong, specific need for them
-- LiveViews should be named like `AppWeb.WeatherLive`, with a `Live` suffix. When you go to add LiveView routes to the router, the default `:browser` scope is **already aliased** with the `AppWeb` module, so you can just do `live "/weather", WeatherLive`
+- LiveViews should be named like `App.Web.WeatherLive`, with a `Live` suffix. When you go to add LiveView routes to the router, the default `:browser` scope is **already aliased** with the `App.Web` module, so you can just do `live "/weather", WeatherLive`
 
 ### LiveView streams
 

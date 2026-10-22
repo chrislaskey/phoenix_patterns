@@ -1,4 +1,4 @@
-defmodule AppWeb.ConnCase do
+defmodule App.Web.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -11,7 +11,7 @@ defmodule AppWeb.ConnCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use AppWeb.ConnCase, async: true`, although
+  by setting `use App.Web.ConnCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -20,14 +20,14 @@ defmodule AppWeb.ConnCase do
   using do
     quote do
       # The default endpoint for testing
-      @endpoint AppWeb.Endpoint
+      @endpoint App.Web.Endpoint
 
-      use AppWeb, :verified_routes
+      use App.Web, :verified_routes
 
       # Import conveniences for testing with connections
       import Plug.Conn
       import Phoenix.ConnTest
-      import AppWeb.ConnCase
+      import App.Web.ConnCase
     end
   end
 
@@ -46,7 +46,7 @@ defmodule AppWeb.ConnCase do
   """
   def register_and_log_in_user(%{conn: conn} = context) do
     user = App.Data.UsersFixtures.user_fixture()
-    scope = AppWeb.Scope.for_user(user)
+    scope = App.Web.Scope.for_user(user)
 
     opts =
       context
