@@ -343,7 +343,8 @@ defmodule App.Data.Context do
 
   def changeset(schema, record, params, options) do
     case Keyword.get(options, :changesets) do
-      nil -> schema.changeset(record, params, options)
+      nil ->
+        schema.changeset(record, params, options)
 
       changesets ->
         changesets

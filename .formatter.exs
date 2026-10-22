@@ -7,5 +7,7 @@
     "{config,lib,test}/**/*.{heex,ex,exs}",
     "priv/*/seeds.exs",
     "priv/code_generators/*.ex"
-  ]
+  ],
+  line_length: 110,
+  heex_line_length: 110
 ]

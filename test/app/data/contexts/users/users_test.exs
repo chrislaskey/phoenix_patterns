@@ -87,7 +87,10 @@ defmodule App.Data.UsersTest do
     test "raise, a user has no default changeset" do
       message = "function App.Data.User.changeset/3 is undefined or private"
 
-      assert_raise UndefinedFunctionError, message, fn -> Users.create(valid_user_attributes()) end
+      assert_raise UndefinedFunctionError, message, fn ->
+        Users.create(valid_user_attributes())
+      end
+
       assert_raise UndefinedFunctionError, message, fn -> Users.update(user_fixture(), %{}) end
       assert_raise UndefinedFunctionError, message, fn -> Users.change(%User{}) end
     end
