@@ -42,3 +42,5 @@ npm-debug.log
 
 # The local environment file bin/docker generates
 /docker/*.env
+
+.claude

@@ -97,6 +97,8 @@ defmodule App.Data.Context do
     quote do
       @behaviour App.Data.Context
 
+      require Ecto.Query
+
       # List
 
       def list(options \\ []) do
