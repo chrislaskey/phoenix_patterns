@@ -1,4 +1,4 @@
-defmodule App.Accounts.Email do
+defmodule App.Data.Accounts.Email do
   @moduledoc """
   Builds and delivers the emails sent to users, such as magic links and
   email change confirmations.

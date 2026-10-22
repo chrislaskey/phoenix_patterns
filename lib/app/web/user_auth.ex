@@ -14,7 +14,7 @@ defmodule App.Web.UserAuth do
   import Plug.Conn
   import Phoenix.Controller
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Data.User
   alias App.Web.Scope
 

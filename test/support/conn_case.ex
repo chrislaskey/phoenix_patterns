@@ -62,7 +62,7 @@ defmodule App.Web.ConnCase do
   It returns an updated `conn`.
   """
   def log_in_user(conn, user, opts \\ []) do
-    token = App.Accounts.generate_user_session_token(user)
+    token = App.Data.Accounts.generate_user_session_token(user)
 
     maybe_set_token_authenticated_at(token, opts[:token_authenticated_at])
 

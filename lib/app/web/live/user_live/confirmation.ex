@@ -1,7 +1,7 @@
 defmodule App.Web.UserLive.Confirmation do
   use App.Web, :live_view
 
-  alias App.Accounts
+  alias App.Data.Accounts
 
   @impl true
   def render(assigns) do

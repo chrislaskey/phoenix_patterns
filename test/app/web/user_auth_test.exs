@@ -1,7 +1,7 @@
 defmodule App.Web.UserAuthTest do
   use App.Web.ConnCase
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Web.Scope
   alias App.Web.UserAuth
   alias Phoenix.LiveView

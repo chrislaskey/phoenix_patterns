@@ -1,9 +1,9 @@
-defmodule App.AccountsTest do
+defmodule App.Data.AccountsTest do
   use App.DataCase
 
   import App.Data.UsersFixtures
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Data.User
   alias App.Data.UserToken
 

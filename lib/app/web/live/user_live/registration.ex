@@ -1,7 +1,7 @@
 defmodule App.Web.UserLive.Registration do
   use App.Web, :live_view
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Data.User
   alias App.Data.Users
 

@@ -3,7 +3,7 @@ defmodule App.Web.UserLive.Settings do
 
   on_mount {App.Web.UserAuth, :require_sudo_mode}
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Data.User
   alias App.Data.Users
 

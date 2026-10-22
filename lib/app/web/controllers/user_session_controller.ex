@@ -1,7 +1,7 @@
 defmodule App.Web.UserSessionController do
   use App.Web, :controller
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Web.UserAuth
 
   def create(conn, %{"_action" => "confirmed"} = params) do

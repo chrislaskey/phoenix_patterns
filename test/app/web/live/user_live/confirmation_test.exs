@@ -4,7 +4,7 @@ defmodule App.Web.UserLive.ConfirmationTest do
   import Phoenix.LiveViewTest
   import App.Data.UsersFixtures
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Data.Users
 
   setup do

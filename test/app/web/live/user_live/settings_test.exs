@@ -1,7 +1,7 @@
 defmodule App.Web.UserLive.SettingsTest do
   use App.Web.ConnCase
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Data.Users
   import Phoenix.LiveViewTest
   import App.Data.UsersFixtures

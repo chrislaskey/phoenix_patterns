@@ -1,12 +1,12 @@
 defmodule App.Data.UsersFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  entities via the `App.Data.Users` context and `App.Accounts`.
+  entities via the `App.Data.Users` context and `App.Data.Accounts`.
   """
 
   import Ecto.Query
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Data.User
   alias App.Data.Users
   alias App.Data.UserToken

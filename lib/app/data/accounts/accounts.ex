@@ -1,4 +1,4 @@
-defmodule App.Accounts do
+defmodule App.Data.Accounts do
   @moduledoc """
   Signing up, logging in and managing an account, over the
   `App.Data.Users` and `App.Data.UserTokens` contexts.
@@ -11,7 +11,7 @@ defmodule App.Accounts do
   and form changesets, and this module for these flows.
   """
 
-  alias App.Accounts.Email
+  alias App.Data.Accounts.Email
   alias App.Data.User
   alias App.Data.Users
   alias App.Data.UserToken

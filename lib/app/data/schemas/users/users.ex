@@ -7,7 +7,7 @@ defmodule App.Data.Users do
   and `change/3` need the `:changesets` option with the changeset functions
   to apply, for example `&User.registration_changeset/3`. Flows that span
   users and their tokens, such as logging in by magic link, live in
-  `App.Accounts`.
+  `App.Data.Accounts`.
   """
 
   use App.Data.Context, schema: App.Data.User

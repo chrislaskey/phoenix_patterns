@@ -1,7 +1,7 @@
 defmodule App.Web.UserLive.Login do
   use App.Web, :live_view
 
-  alias App.Accounts
+  alias App.Data.Accounts
   alias App.Data.Users
 
   @impl true
