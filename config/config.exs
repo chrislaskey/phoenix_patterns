@@ -24,6 +24,9 @@ config :app,
   ecto_repos: [App.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# Mount the websocket API at `/api`. See App.Web.ApiSocket
+config :app, api_socket: false
+
 # Configure the endpoint
 config :app, App.Web.Endpoint,
   url: [host: "localhost"],

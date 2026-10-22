@@ -15,9 +15,13 @@ defmodule App.Web.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]
 
-  socket "/api", App.Web.ApiSocket,
-    websocket: true,
-    longpoll: false
+  # The websocket API is off by default. Turn it on with
+  # `config :app, api_socket: true` in config/config.exs
+  if Application.compile_env(:app, :api_socket, false) do
+    socket "/api", App.Web.ApiSocket,
+      websocket: true,
+      longpoll: false
+  end
 
   # Serve at "/" the static files from "priv/static" directory.
   #
