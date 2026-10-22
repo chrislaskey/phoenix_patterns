@@ -57,6 +57,8 @@ defmodule App.Data.Context do
 
   """
 
+  require Ecto.Query
+
   # Overridable
 
   @callback list(Keyword.t()) :: list(any())
@@ -99,40 +101,40 @@ defmodule App.Data.Context do
 
       def list(options \\ []) do
         schema()
-        |> App.Data.Helpers.Contexts.joins(joins(), options, &join/2)
-        |> App.Data.Helpers.Contexts.preloads(preloads(), options)
-        |> App.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
-        |> App.Data.Helpers.Contexts.sorts(sorts(), options, &sort/3)
+        |> App.Data.Context.joins(joins(), options, &join/2)
+        |> App.Data.Context.preloads(preloads(), options)
+        |> App.Data.Context.filters(filters(), options, &filter/3)
+        |> App.Data.Context.sorts(sorts(), options, &sort/3)
         |> App.Repo.all()
       end
 
       def join(query, name) do
-        App.Data.Helpers.Contexts.join_by_any_schema_association(query, name)
+        App.Data.Context.join_by_any_schema_association(query, name)
       end
 
       def filter(query, key, value) do
-        App.Data.Helpers.Contexts.filter_by_any_schema_fields(query, key, value)
+        App.Data.Context.filter_by_any_schema_fields(query, key, value)
       end
 
       def sort(query, direction, field) do
-        App.Data.Helpers.Contexts.sort_by_any_schema_fields(query, direction, field)
+        App.Data.Context.sort_by_any_schema_fields(query, direction, field)
       end
 
       # Get/fetch
 
       def get(id, options \\ []) do
         schema()
-        |> App.Data.Helpers.Contexts.joins(joins(), options, &join/2)
-        |> App.Data.Helpers.Contexts.preloads(preloads(), options)
-        |> App.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
+        |> App.Data.Context.joins(joins(), options, &join/2)
+        |> App.Data.Context.preloads(preloads(), options)
+        |> App.Data.Context.filters(filters(), options, &filter/3)
         |> App.Repo.get(id)
       end
 
       def get_by(values, options \\ []) do
         schema()
-        |> App.Data.Helpers.Contexts.joins(joins(), options, &join/2)
-        |> App.Data.Helpers.Contexts.preloads(preloads(), options)
-        |> App.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
+        |> App.Data.Context.joins(joins(), options, &join/2)
+        |> App.Data.Context.preloads(preloads(), options)
+        |> App.Data.Context.filters(filters(), options, &filter/3)
         |> App.Repo.get_by(values)
       end
 
@@ -153,7 +155,7 @@ defmodule App.Data.Context do
       # Change
 
       def change(record, params \\ %{}, options \\ []) do
-        App.Data.Helpers.Contexts.changeset(schema(), record, params, options)
+        App.Data.Context.changeset(schema(), record, params, options)
       end
 
       # Create
@@ -242,8 +244,8 @@ defmodule App.Data.Context do
         end
 
         schema()
-        |> App.Data.Helpers.Contexts.joins(joins(), options, &join/2)
-        |> App.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
+        |> App.Data.Context.joins(joins(), options, &join/2)
+        |> App.Data.Context.filters(filters(), options, &filter/3)
         |> App.Repo.delete_all()
       end
 
@@ -279,6 +281,74 @@ defmodule App.Data.Context do
                      delete: 1,
                      delete_by: 1,
                      delete_many: 1
+    end
+  end
+
+  # Helpers - Joins
+
+  def joins(query, default, options, callback) do
+    options
+    |> Keyword.get(:joins, default)
+    |> Enum.reduce(query, fn name, query ->
+      callback.(query, name)
+    end)
+  end
+
+  def join_by_any_schema_association(query, name) do
+    if Ecto.Query.has_named_binding?(query, name) do
+      query
+    else
+      Ecto.Query.join(query, :left, [root], new in assoc(root, ^name), as: ^name)
+    end
+  end
+
+  # Helpers - Preloads
+
+  def preloads(query, default, options) do
+    preloads = Keyword.get(options, :preloads, default)
+
+    Ecto.Query.preload(query, ^preloads)
+  end
+
+  # Helpers - Filters
+
+  def filters(query, default, options, callback) do
+    options
+    |> Keyword.get(:filters, default)
+    |> Enum.reduce(query, fn {key, value}, query ->
+      callback.(query, key, value)
+    end)
+  end
+
+  def filter_by_any_schema_fields(query, key, value) do
+    Ecto.Query.where(query, ^Keyword.new([{key, value}]))
+  end
+
+  # Helpers - Sorts
+
+  def sorts(query, default, options, callback) do
+    options
+    |> Keyword.get(:order_by, default)
+    |> Enum.reduce(query, fn
+      {direction, field}, query -> callback.(query, direction, field)
+      field, query -> callback.(query, :asc, field)
+    end)
+  end
+
+  def sort_by_any_schema_fields(query, direction, field) do
+    Ecto.Query.order_by(query, ^Keyword.new([{direction, field}]))
+  end
+
+  # Helpers - Changesets
+
+  def changeset(schema, record, params, options) do
+    case Keyword.get(options, :changesets) do
+      nil -> schema.changeset(record, params, options)
+
+      changesets ->
+        changesets
+        |> List.wrap()
+        |> Enum.reduce(record, fn changeset, record -> changeset.(record, params, options) end)
     end
   end
 end
