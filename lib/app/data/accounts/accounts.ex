@@ -21,6 +21,9 @@ defmodule App.Data.Accounts do
   @login_context "login"
   @session_context "session"
 
+  @hash_algorithm :sha256
+  @rand_size 32
+
   ## Passwords and sudo mode
 
   @doc """
@@ -77,16 +80,22 @@ defmodule App.Data.Accounts do
 
   @doc """
   Generates a session token.
+
+  It is stored as is, since it only ever lives in the signed session and
+  cookie.
   """
   def generate_user_session_token(user) do
-    {:ok, token} =
+    token = :crypto.strong_rand_bytes(@rand_size)
+
+    {:ok, _user_token} =
       UserTokens.create(%{
+        token: token,
         user_id: user.id,
         context: @session_context,
         authenticated_at: user.authenticated_at || DateTime.utc_now(:second)
       })
 
-    token.token
+    token
   end
 
   @doc """
@@ -174,10 +183,9 @@ defmodule App.Data.Accounts do
   """
   def deliver_login_instructions(%User{} = user, magic_link_url_fun)
       when is_function(magic_link_url_fun, 1) do
-    {:ok, token} =
-      UserTokens.create(%{user_id: user.id, sent_to: user.email, context: @login_context})
+    encoded_token = create_email_token(user, @login_context)
 
-    Email.deliver_login_instructions(user, magic_link_url_fun.(token.encoded))
+    Email.deliver_login_instructions(user, magic_link_url_fun.(encoded_token))
   end
 
   ## Email change
@@ -193,14 +201,9 @@ defmodule App.Data.Accounts do
   """
   def deliver_user_update_email_instructions(%User{} = user, current_email, update_email_url_fun)
       when is_function(update_email_url_fun, 1) do
-    {:ok, token} =
-      UserTokens.create(%{
-        user_id: user.id,
-        sent_to: user.email,
-        context: change_email_context(current_email)
-      })
+    encoded_token = create_email_token(user, change_email_context(current_email))
 
-    Email.deliver_update_email_instructions(user, update_email_url_fun.(token.encoded))
+    Email.deliver_update_email_instructions(user, update_email_url_fun.(encoded_token))
   end
 
   @doc """
@@ -212,10 +215,9 @@ defmodule App.Data.Accounts do
     context = change_email_context(user.email)
 
     Repo.transact(fn ->
-      with %UserToken{sent_to: email} <-
-             UserTokens.get_by([context: context],
-               filters: [encoded_token: encoded_token, valid: true]
-             ),
+      with {:ok, token} <- decode(encoded_token),
+           %UserToken{sent_to: email} <-
+             UserTokens.get_by([token: hash(token), context: context], filters: [valid: true]),
            {:ok, user} <- Users.update(user, %{email: email}, changesets: &User.email_changeset/3),
            {_count, _result} <-
              UserTokens.delete_many(filters: [user_id: user.id, context: context]) do
@@ -249,11 +251,34 @@ defmodule App.Data.Accounts do
   ## Helpers
 
   defp get_magic_link_token(encoded_token) do
-    UserTokens.get_by([context: @login_context],
-      filters: [encoded_token: encoded_token, valid: true, sent_to_user_email: true],
-      preloads: [:user]
-    )
+    case decode(encoded_token) do
+      {:ok, token} ->
+        UserTokens.get_by([token: hash(token), context: @login_context],
+          filters: [valid: true, sent_to_user_email: true],
+          preloads: [:user]
+        )
+
+      :error ->
+        nil
+    end
   end
+
+  # The token goes into the email and only its hash into the database, so
+  # anyone with read access to the table cannot use it. A token sent to an
+  # email the user has since changed no longer matches (see the
+  # `:sent_to_user_email` filter of `App.Data.UserTokens`).
+  defp create_email_token(user, context) do
+    token = :crypto.strong_rand_bytes(@rand_size)
+
+    {:ok, _user_token} =
+      UserTokens.create(%{token: hash(token), user_id: user.id, sent_to: user.email, context: context})
+
+    encode(token)
+  end
+
+  defp hash(token), do: :crypto.hash(@hash_algorithm, token)
+  defp encode(token), do: Base.url_encode64(token, padding: false)
+  defp decode(encoded), do: Base.url_decode64(encoded, padding: false)
 
   defp change_email_context(current_email), do: "change:#{current_email}"
 

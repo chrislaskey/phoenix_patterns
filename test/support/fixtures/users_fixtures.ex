@@ -10,7 +10,6 @@ defmodule App.Data.UsersFixtures do
   alias App.Data.User
   alias App.Data.Users
   alias App.Data.UserToken
-  alias App.Data.UserTokens
   alias App.Web.Scope
 
   def unique_user_email, do: "user#{System.unique_integer()}@example.com"
@@ -76,10 +75,9 @@ defmodule App.Data.UsersFixtures do
   end
 
   def generate_user_magic_link_token(user) do
-    {:ok, user_token} =
-      UserTokens.create(%{user_id: user.id, sent_to: user.email, context: "login"})
+    encoded_token = extract_user_token(&Accounts.deliver_login_instructions(user, &1))
 
-    {user_token.encoded, user_token.token}
+    {encoded_token, :crypto.hash(:sha256, Base.url_decode64!(encoded_token, padding: false))}
   end
 
   def offset_user_token(token, amount_to_add, unit) do

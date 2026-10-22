@@ -92,6 +92,11 @@ defmodule App.Data.AccountsTest do
       assert Repo.get_by(UserToken, user_id: user.id)
     end
 
+    test "does not update email with a token that is not base64", %{user: user} do
+      assert Accounts.update_user_email(user, "not base 64!") ==
+               {:error, :transaction_aborted}
+    end
+
     test "does not update email if user email changed", %{user: user, token: token} do
       assert Accounts.update_user_email(%{user | email: "current@example.com"}, token) ==
                {:error, :transaction_aborted}
