@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+#
+# Finish the work in a git worktree, such as one made by
+# `claude --worktree NAME --tmux`.
+#
+# Usage: bin/worktree merge   # merge this branch into the local main, then
+#                             # remove the worktree, delete the branch and
+#                             # close the worktree's tmux session
+#        bin/worktree close   # remove the worktree and close its tmux
+#                             # session, keeping the branch
+#
+# Run it from inside the worktree, also from inside its tmux session: the
+# session is closed last, so everything else is done by then. Nothing is
+# pushed. The merge is a fast-forward only, so main never gets a merge commit
+# or a conflict. When main has moved on, rebase the branch onto it first.
+#
+# After `close` the branch is an ordinary branch, as if no worktree had been
+# used: `git switch` to it in the main checkout to carry on. Uncommitted
+# changes would be lost, so both commands refuse when there are any. Ignored
+# files in the worktree, such as _build and deps, are deleted with it.
+#
+# The tmux session is closed only when its name is the one `claude --tmux`
+# gives it, `<repository folder>_<branch>`, so running this from any other
+# session leaves that session alone.
+
+set -euo pipefail
+
+main_branch="main"
+
+usage() {
+  echo "Usage: $0 {merge|close}" >&2
+  exit 1
+}
+
+fail() {
+  echo "$0: $*" >&2
+  exit 1
+}
+
+# Reads the worktree, its main checkout and its branch, and refuses anything
+# that is not a clean worktree on a branch of its own.
+read_worktree() {
+  worktree=$(git rev-parse --show-toplevel)
+  # The first worktree listed is the main checkout.
+  main_checkout=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -n 1)
+  branch=$(git branch --show-current)
+
+  [[ "$worktree" != "$main_checkout" ]] ||
+    fail "this is the main checkout, run it from inside a worktree"
+  [[ -n "$branch" ]] || fail "no branch is checked out in $worktree"
+  [[ "$branch" != "$main_branch" ]] || fail "the worktree is on $main_branch itself"
+  [[ -z "$(git status --porcelain)" ]] ||
+    fail "$worktree has uncommitted changes, commit or remove them first"
+}
+
+remove_worktree() {
+  # Out of the folder before it goes away.
+  cd "$main_checkout"
+
+  echo "Removing the worktree $worktree"
+  git worktree remove "$worktree"
+}
+
+# Closes the tmux session this runs in when it is the worktree's, last, since
+# it ends everything running in the session, this script included.
+close_tmux_session() {
+  local session
+
+  [[ -n "${TMUX:-}" ]] || return 0
+
+  session=$(tmux display-message -p '#S')
+  if [[ "$session" == "$(basename "$main_checkout")_$branch" ]]; then
+    echo "Closing the tmux session $session"
+    tmux kill-session -t "$session"
+  else
+    echo "Leaving the tmux session $session open, it is not this worktree's"
+  fi
+}
+
+merge() {
+  read_worktree
+  [[ "$(git -C "$main_checkout" branch --show-current)" == "$main_branch" ]] ||
+    fail "$main_checkout must have $main_branch checked out"
+
+  echo "Merging $branch into $main_branch in $main_checkout"
+  git -C "$main_checkout" merge --ff-only "$branch" ||
+    fail "$branch cannot fast-forward $main_branch, run \`git rebase $main_branch\` here first"
+
+  remove_worktree
+
+  echo "Deleting the branch $branch"
+  git branch -d "$branch"
+
+  close_tmux_session
+}
+
+close() {
+  read_worktree
+  remove_worktree
+  echo "Keeping the branch $branch, \`git switch $branch\` in $main_checkout to carry on"
+  close_tmux_session
+}
+
+case "${1:-}" in
+  merge) merge ;;
+  close) close ;;
+  *) usage ;;
+esac
