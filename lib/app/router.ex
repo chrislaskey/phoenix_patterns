@@ -1,4 +1,4 @@
-defmodule AppWeb.Router do
+defmodule App.Router do
   use AppWeb, :router
 
   import AppWeb.UserAuth
