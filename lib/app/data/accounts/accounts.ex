@@ -20,6 +20,7 @@ defmodule App.Data.Accounts do
 
   @login_context "login"
   @session_context "session"
+  @api_context "api"
 
   @hash_algorithm :sha256
   @rand_size 32
@@ -122,6 +123,70 @@ defmodule App.Data.Accounts do
   def delete_user_session_token(token) do
     UserTokens.delete_many(filters: [token: token, context: @session_context])
     :ok
+  end
+
+  ## API
+
+  @doc """
+  Generates an API token, for a client of the websocket API at `/api`.
+
+  The token is returned encoded and only its hash is stored, so anyone with
+  read access to the table cannot use it. The client keeps it and sends it
+  on every connect, see `App.Web.ApiSocket`.
+  """
+  def generate_user_api_token(user) do
+    token = :crypto.strong_rand_bytes(@rand_size)
+
+    {:ok, _user_token} =
+      UserTokens.create(%{token: hash(token), user_id: user.id, context: @api_context})
+
+    encode(token)
+  end
+
+  @doc """
+  Gets the API token row of the given encoded token, with its user.
+
+  Returns `nil` when the token is unknown, malformed or expired.
+  """
+  def get_user_api_token(encoded_token) do
+    case decode(encoded_token) do
+      {:ok, token} ->
+        UserTokens.get_by([token: hash(token), context: @api_context],
+          filters: [valid: true],
+          preloads: [:user]
+        )
+
+      :error ->
+        nil
+    end
+  end
+
+  @doc """
+  Updates an API token of the scope's user by replacing it: the token is
+  deleted and a new one created in its place.
+
+  Returns `{:ok, {encoded_token, deleted_token}}`, or `{:error, :not_found}`
+  when the token is not one of the user's API tokens.
+  """
+  def update_user_api_token(scope, %UserToken{} = user_token) do
+    Repo.transact(fn ->
+      with {:ok, user_token} <- delete_user_api_token(scope, user_token) do
+        {:ok, {generate_user_api_token(scope.user), user_token}}
+      end
+    end)
+  end
+
+  @doc """
+  Deletes an API token of the scope's user.
+
+  Returns `{:error, :not_found}` when the token is not one of the user's
+  API tokens.
+  """
+  def delete_user_api_token(scope, %UserToken{} = user_token) do
+    case UserTokens.get_by(id: user_token.id, user_id: scope.user.id, context: @api_context) do
+      %UserToken{} = user_token -> UserTokens.delete(user_token)
+      nil -> {:error, :not_found}
+    end
   end
 
   ## Magic link log in
@@ -234,6 +299,8 @@ defmodule App.Data.Accounts do
   Updates the user password.
 
   Returns a tuple with the updated user, as well as a list of expired tokens.
+  Every token of the user is expired except their API tokens, which a
+  client may hold on another machine.
 
   ## Examples
 
@@ -245,7 +312,7 @@ defmodule App.Data.Accounts do
 
   """
   def update_user_password(user, attrs) do
-    update_user_and_delete_all_tokens(user, attrs, [&User.password_changeset/3])
+    update_user_and_delete_all_tokens(user, attrs, [&User.password_changeset/3], except_context: @api_context)
   end
 
   ## Helpers
@@ -282,12 +349,13 @@ defmodule App.Data.Accounts do
 
   defp change_email_context(current_email), do: "change:#{current_email}"
 
-  defp update_user_and_delete_all_tokens(user, params, changesets) do
+  defp update_user_and_delete_all_tokens(user, params, changesets, filters \\ []) do
     Repo.transact(fn ->
       with {:ok, user} <- Users.update(user, params, changesets: changesets) do
-        tokens_to_expire = UserTokens.list(filters: [user_id: user.id])
+        filters = [{:user_id, user.id} | filters]
+        tokens_to_expire = UserTokens.list(filters: filters)
 
-        UserTokens.delete_many(filters: [user_id: user.id])
+        UserTokens.delete_many(filters: filters)
 
         {:ok, {user, tokens_to_expire}}
       end

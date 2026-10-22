@@ -163,7 +163,20 @@ defmodule App.Data.AccountsTest do
           password: "new valid password"
         })
 
-      refute Repo.get_by(UserToken, user_id: user.id)
+      refute Repo.get_by(UserToken, user_id: user.id, context: "session")
+      refute Repo.get_by(UserToken, user_id: user.id, context: "login")
+    end
+
+    test "keeps the user's API tokens", %{user: user} do
+      encoded_token = Accounts.generate_user_api_token(user)
+
+      {:ok, {_, expired_tokens}} =
+        Accounts.update_user_password(user, %{
+          password: "new valid password"
+        })
+
+      refute Enum.any?(expired_tokens, &(&1.context == "api"))
+      assert Accounts.get_user_api_token(encoded_token)
     end
   end
 
@@ -287,6 +300,86 @@ defmodule App.Data.AccountsTest do
       token = Accounts.generate_user_session_token(user)
       assert Accounts.delete_user_session_token(token) == :ok
       refute Accounts.get_user_by_session_token(token)
+    end
+  end
+
+  describe "generate_user_api_token/1" do
+    test "stores only the hash of the token it returns" do
+      user = user_fixture()
+      encoded_token = Accounts.generate_user_api_token(user)
+
+      refute Repo.get_by(UserToken, token: Base.url_decode64!(encoded_token, padding: false))
+
+      hashed_token = :crypto.hash(:sha256, Base.url_decode64!(encoded_token, padding: false))
+      assert user_token = Repo.get_by(UserToken, token: hashed_token)
+      assert user_token.context == "api"
+      assert user_token.user_id == user.id
+    end
+  end
+
+  describe "get_user_api_token/1" do
+    setup do
+      user = user_fixture()
+      %{user: user, encoded_token: Accounts.generate_user_api_token(user)}
+    end
+
+    test "returns the token with its user", %{user: user, encoded_token: encoded_token} do
+      assert %UserToken{user: %User{id: user_id}} = Accounts.get_user_api_token(encoded_token)
+      assert user_id == user.id
+    end
+
+    test "does not return a malformed or unknown token" do
+      refute Accounts.get_user_api_token("oops")
+      refute Accounts.get_user_api_token(Base.url_encode64(:crypto.strong_rand_bytes(32)))
+    end
+
+    test "does not return a session token as an API token", %{user: user} do
+      token = Accounts.generate_user_session_token(user)
+      refute Accounts.get_user_api_token(Base.url_encode64(token, padding: false))
+    end
+
+    test "does not return an expired token", %{encoded_token: encoded_token} do
+      {1, nil} = Repo.update_all(UserToken, set: [inserted_at: ~U[2020-01-01 00:00:00Z]])
+      refute Accounts.get_user_api_token(encoded_token)
+    end
+  end
+
+  describe "update_user_api_token/2" do
+    test "replaces the token with a new one" do
+      user = user_fixture()
+      encoded_token = Accounts.generate_user_api_token(user)
+      user_token = Accounts.get_user_api_token(encoded_token)
+
+      assert {:ok, {new_token, deleted_token}} =
+               Accounts.update_user_api_token(user_scope_fixture(user), user_token)
+
+      assert deleted_token.id == user_token.id
+      refute Accounts.get_user_api_token(encoded_token)
+      assert Accounts.get_user_api_token(new_token).user.id == user.id
+    end
+
+    test "does not update another user's token" do
+      encoded_token = Accounts.generate_user_api_token(user_fixture())
+      user_token = Accounts.get_user_api_token(encoded_token)
+
+      assert {:error, :not_found} =
+               Accounts.update_user_api_token(user_scope_fixture(), user_token)
+
+      assert Accounts.get_user_api_token(encoded_token)
+    end
+  end
+
+  describe "delete_user_api_token/2" do
+    test "deletes only an API token of the scope's user" do
+      user = user_fixture()
+      encoded_token = Accounts.generate_user_api_token(user)
+      user_token = Accounts.get_user_api_token(encoded_token)
+
+      assert {:error, :not_found} = Accounts.delete_user_api_token(user_scope_fixture(), user_token)
+      assert Accounts.get_user_api_token(encoded_token)
+
+      assert {:ok, _} = Accounts.delete_user_api_token(user_scope_fixture(user), user_token)
+      refute Accounts.get_user_api_token(encoded_token)
     end
   end
 

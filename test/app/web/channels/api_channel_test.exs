@@ -1,5 +1,7 @@
 defmodule App.Web.ApiChannelTest do
-  use App.Web.ChannelCase, async: true
+  use App.Web.ChannelCase
+
+  import App.Data.UsersFixtures
 
   alias App.Web.ApiChannel
   alias App.Web.ApiSocket
@@ -7,7 +9,7 @@ defmodule App.Web.ApiChannelTest do
   setup do
     {:ok, _reply, socket} =
       ApiSocket
-      |> socket()
+      |> socket(nil, %{current_scope: user_scope_fixture()})
       |> subscribe_and_join(ApiChannel, "api")
 
     %{socket: socket}

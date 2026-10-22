@@ -65,6 +65,16 @@ defmodule App.Data.UserTokensTest do
       offset_user_token(user_token.token, -15, :day)
       refute UserTokens.get_by([token: user_token.token], filters: [valid: true])
     end
+
+    test "gives an API token a year", %{user: user} do
+      {:ok, user_token} = UserTokens.create(%{user_id: user.id, context: "api", token: new_token()})
+
+      offset_user_token(user_token.token, -364, :day)
+      assert UserTokens.get_by([token: user_token.token], filters: [valid: true])
+
+      offset_user_token(user_token.token, -366, :day)
+      refute UserTokens.get_by([token: user_token.token], filters: [valid: true])
+    end
   end
 
   describe "the :sent_to_user_email filter" do

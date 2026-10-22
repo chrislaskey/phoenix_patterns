@@ -3,8 +3,8 @@ defmodule App.Data.UserToken do
   import Ecto.Changeset
 
   schema "users_tokens" do
-    # The token of a session, or the hash of a token sent by email, see
-    # `App.Data.Accounts`.
+    # The token of a session, or the hash of a token sent by email or given
+    # to an API client, see `App.Data.Accounts`.
     field :token, :binary, redact: true
     field :context, :string
     field :sent_to, :string

@@ -189,7 +189,11 @@ defmodule App.Web.UserAuth do
     end)
   end
 
-  defp user_session_topic(token), do: "users_sessions:#{Base.url_encode64(token)}"
+  @doc """
+  The topic sockets authenticated by the given stored token are
+  identified by, which `disconnect_sessions/1` broadcasts to.
+  """
+  def user_session_topic(token), do: "users_sessions:#{Base.url_encode64(token)}"
 
   @doc """
   Handles mounting and authenticating the current_scope in LiveViews.

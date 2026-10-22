@@ -1,8 +1,9 @@
 defmodule App.Data.UserTokens do
   @moduledoc """
   The data context over `App.Data.UserToken`: sessions (context
-  `"session"`), magic links (context `"login"`) and email change
-  confirmations (context `"change:<current email>"`).
+  `"session"`), magic links (context `"login"`), email change
+  confirmations (context `"change:<current email>"`) and websocket API
+  clients (context `"api"`).
 
   `App.Data.Accounts` generates the tokens. Refuse an expired one with the
   `:valid` filter:
@@ -16,10 +17,12 @@ defmodule App.Data.UserTokens do
   @magic_link_validity_in_minutes 15
   @change_email_validity_in_days 7
   @session_validity_in_days 14
+  @api_validity_in_days 365
 
   def filter(query, :valid, true) do
     # A token that has not expired. A magic link is valid for a quarter of an
-    # hour, an email change link for a week and a session for two weeks.
+    # hour, an email change link for a week, a session for two weeks and an
+    # API token for a year.
     Ecto.Query.where(
       query,
       [token],
@@ -28,7 +31,9 @@ defmodule App.Data.UserTokens do
         (like(token.context, "change:%") and
            token.inserted_at > ago(^@change_email_validity_in_days, "day")) or
         (token.context == "session" and
-           token.inserted_at > ago(^@session_validity_in_days, "day"))
+           token.inserted_at > ago(^@session_validity_in_days, "day")) or
+        (token.context == "api" and
+           token.inserted_at > ago(^@api_validity_in_days, "day"))
     )
   end
 
@@ -38,6 +43,10 @@ defmodule App.Data.UserTokens do
     query
     |> join(:user)
     |> Ecto.Query.where([token, user: user], token.sent_to == user.email)
+  end
+
+  def filter(query, :except_context, context) do
+    Ecto.Query.where(query, [token], token.context != ^context)
   end
 
   def filter(query, key, value), do: super(query, key, value)
