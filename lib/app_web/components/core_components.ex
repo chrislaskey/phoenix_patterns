@@ -1,4 +1,4 @@
-defmodule ExampleWeb.CoreComponents do
+defmodule AppWeb.CoreComponents do
   @moduledoc """
   Provides core UI components.
 
@@ -27,7 +27,7 @@ defmodule ExampleWeb.CoreComponents do
 
   """
   use Phoenix.Component
-  use Gettext, backend: ExampleWeb.Gettext
+  use Gettext, backend: AppWeb.Gettext
 
   alias Phoenix.LiveView.JS
 
@@ -490,9 +490,9 @@ defmodule ExampleWeb.CoreComponents do
     # with our gettext backend as first argument. Translations are
     # available in the errors.po file (as we use the "errors" domain).
     if count = opts[:count] do
-      Gettext.dngettext(ExampleWeb.Gettext, "errors", msg, msg, count, opts)
+      Gettext.dngettext(AppWeb.Gettext, "errors", msg, msg, count, opts)
     else
-      Gettext.dgettext(ExampleWeb.Gettext, "errors", msg, opts)
+      Gettext.dgettext(AppWeb.Gettext, "errors", msg, opts)
     end
   end
 

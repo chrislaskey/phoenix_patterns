@@ -1,4 +1,4 @@
-defmodule ExampleWeb.Telemetry do
+defmodule AppWeb.Telemetry do
   use Supervisor
   import Telemetry.Metrics
 
@@ -53,23 +53,23 @@ defmodule ExampleWeb.Telemetry do
       ),
 
       # Database Metrics
-      summary("example.repo.query.total_time",
+      summary("app.repo.query.total_time",
         unit: {:native, :millisecond},
         description: "The sum of the other measurements"
       ),
-      summary("example.repo.query.decode_time",
+      summary("app.repo.query.decode_time",
         unit: {:native, :millisecond},
         description: "The time spent decoding the data received from the database"
       ),
-      summary("example.repo.query.query_time",
+      summary("app.repo.query.query_time",
         unit: {:native, :millisecond},
         description: "The time spent executing the query"
       ),
-      summary("example.repo.query.queue_time",
+      summary("app.repo.query.queue_time",
         unit: {:native, :millisecond},
         description: "The time spent waiting for a database connection"
       ),
-      summary("example.repo.query.idle_time",
+      summary("app.repo.query.idle_time",
         unit: {:native, :millisecond},
         description:
           "The time the connection spent waiting before being checked out for the query"
@@ -87,7 +87,7 @@ defmodule ExampleWeb.Telemetry do
     [
       # A module, function and arguments to be invoked periodically.
       # This function must call :telemetry.execute/3 and a metric must be added above.
-      # {ExampleWeb, :count_users, []}
+      # {AppWeb, :count_users, []}
     ]
   end
 end

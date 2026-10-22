@@ -1,4 +1,4 @@
-defmodule Example.Data.Helpers.Contexts do
+defmodule App.Data.Helpers.Contexts do
   @moduledoc "Common helper functions for contexts"
 
   import Ecto.Query

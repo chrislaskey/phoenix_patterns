@@ -1,9 +1,9 @@
-defmodule ExampleWeb.Layouts do
+defmodule AppWeb.Layouts do
   @moduledoc """
   This module holds layouts and related functionality
   used by your application.
   """
-  use ExampleWeb, :html
+  use AppWeb, :html
 
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML

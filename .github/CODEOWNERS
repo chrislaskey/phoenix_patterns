@@ -14,17 +14,17 @@
 
 # neither list: no owner, so the one approval the branch rule requires can come from
 # the automated reviewer
-/lib/example_web/live/**/*.heex
-/lib/example_web/controllers/**/*.heex
+/lib/app_web/live/**/*.heex
+/lib/app_web/controllers/**/*.heex
 /docs/
 /README.md
 
 # architect_review
-/lib/example_web.ex                      @org/architects
-/lib/example_web/components/             @org/architects
-/lib/example_web/router.ex               @org/architects
-/lib/example_web/endpoint.ex             @org/architects
-/lib/example/application.ex              @org/architects
+/lib/app_web.ex                      @org/architects
+/lib/app_web/components/             @org/architects
+/lib/app_web/router.ex               @org/architects
+/lib/app_web/endpoint.ex             @org/architects
+/lib/app/application.ex              @org/architects
 /config/                                 @org/architects
 /mix.exs                                 @org/architects
 /mix.lock                                @org/architects

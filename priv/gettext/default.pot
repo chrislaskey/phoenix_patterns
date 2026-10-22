@@ -11,28 +11,28 @@
 msgid ""
 msgstr ""
 
-#: lib/example_web/components/core_components.ex:375
+#: lib/app_web/components/core_components.ex:375
 #, elixir-autogen, elixir-format
 msgid "Actions"
 msgstr ""
 
-#: lib/example_web/components/layouts.ex:102
-#: lib/example_web/components/layouts.ex:117
+#: lib/app_web/components/layouts.ex:102
+#: lib/app_web/components/layouts.ex:117
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/example_web/components/layouts.ex:109
+#: lib/app_web/components/layouts.ex:109
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/example_web/components/layouts.ex:94
+#: lib/app_web/components/layouts.ex:94
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
 
-#: lib/example_web/components/core_components.ex:81
+#: lib/app_web/components/core_components.ex:81
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr ""

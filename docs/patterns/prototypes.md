@@ -91,7 +91,7 @@ inside the container and how to create a token for a private repository.
 - [Rebuild in place](../../docker/rebuild.sh)
 - [Watch a branch](../../docker/git-poll.sh)
 - [Health check](../../docker/healthcheck.sh)
-- [Migrations run on boot](../../lib/example/application.ex)
+- [Migrations run on boot](../../lib/app/application.ex)
 
 ## Adopting this pattern
 

@@ -1,12 +1,12 @@
-defmodule ExampleWeb do
+defmodule AppWeb do
   @moduledoc """
   The entrypoint for defining your web interface, such
   as controllers, components, channels, and so on.
 
   This can be used in your application as:
 
-      use ExampleWeb, :controller
-      use ExampleWeb, :html
+      use AppWeb, :controller
+      use AppWeb, :html
 
   The definitions below will be executed for every controller,
   component, etc, so keep them short and clean, focused
@@ -40,7 +40,7 @@ defmodule ExampleWeb do
     quote do
       use Phoenix.Controller, formats: [:html, :json]
 
-      use Gettext, backend: ExampleWeb.Gettext
+      use Gettext, backend: AppWeb.Gettext
 
       import Plug.Conn
 
@@ -80,15 +80,15 @@ defmodule ExampleWeb do
   defp html_helpers do
     quote do
       # Translation
-      use Gettext, backend: ExampleWeb.Gettext
+      use Gettext, backend: AppWeb.Gettext
 
       # HTML escaping functionality
       import Phoenix.HTML
       # Core UI components
-      import ExampleWeb.CoreComponents
+      import AppWeb.CoreComponents
 
       # Common modules used in templates
-      alias ExampleWeb.Layouts
+      alias AppWeb.Layouts
       alias Phoenix.LiveView.JS
 
       # Routes generation with the ~p sigil
@@ -99,9 +99,9 @@ defmodule ExampleWeb do
   def verified_routes do
     quote do
       use Phoenix.VerifiedRoutes,
-        endpoint: ExampleWeb.Endpoint,
-        router: ExampleWeb.Router,
-        statics: ExampleWeb.static_paths()
+        endpoint: AppWeb.Endpoint,
+        router: AppWeb.Router,
+        statics: AppWeb.static_paths()
     end
   end
 

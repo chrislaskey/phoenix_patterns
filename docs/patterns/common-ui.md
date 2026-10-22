@@ -51,15 +51,15 @@ CI. It is built to stay fast as the application grows:
 
 - [The check](https://github.com/chrislaskey/app_checks/blob/main/priv/checks/src/checks/core_component_tags.rs)
 - [Its settings](../../.app_checks.exs)
-- [The components module it reads](../../lib/example_web/components/core_components.ex)
-- [The layout, converted to use `<.button>`](../../lib/example_web/components/layouts.ex)
+- [The components module it reads](../../lib/app_web/components/core_components.ex)
+- [The layout, converted to use `<.button>`](../../lib/app_web/components/layouts.ex)
 - [Guide for writing checks in Rust](../guides/writing-checks-in-rust.md)
 
 ### Configuration
 
 ```elixir
 core_component_tags: [
-  paths: ["lib/example_web/components/core_components.ex"]
+  paths: ["lib/app_web/components/core_components.ex"]
 ]
 ```
 
@@ -74,8 +74,8 @@ never a question of which component the finding means.
 The generated theme toggle in the layout used raw buttons:
 
 ```
-lib/example_web/components/layouts.ex:134: <button> may be a raw tag [core_component_tags, potential]
-lib/example_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from ExampleWeb.CoreComponents [core_component_tags, confirmed]
+lib/app_web/components/layouts.ex:134: <button> may be a raw tag [core_component_tags, potential]
+lib/app_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from AppWeb.CoreComponents [core_component_tags, confirmed]
 ```
 
 The fix is the dot. `class`, `phx-click` and `data-` attributes pass through

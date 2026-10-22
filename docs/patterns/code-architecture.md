@@ -14,4 +14,4 @@ Push all LLM changes down to the leaf nodes.
 - Tiered code-review (see code-review.md guide)
 - Simple core design patterns with checkers to ensure they all follow the same patterns
 - Low level contexts for Repo interactions
-- No `Repo.all` in the lib/example_web/live directories?
+- No `Repo.all` in the lib/app_web/live directories?

@@ -7,19 +7,19 @@
 # General application configuration
 import Config
 
-config :example,
-  ecto_repos: [Example.Repo],
+config :app,
+  ecto_repos: [App.Repo],
   generators: [timestamp_type: :utc_datetime]
 
 # Configure the endpoint
-config :example, ExampleWeb.Endpoint,
+config :app, AppWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: ExampleWeb.ErrorHTML, json: ExampleWeb.ErrorJSON],
+    formats: [html: AppWeb.ErrorHTML, json: AppWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Example.PubSub,
+  pubsub_server: App.PubSub,
   live_view: [signing_salt: "3LSQ0hOk"]
 
 # Configure LiveView
@@ -34,12 +34,12 @@ config :phoenix_live_view,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
-config :example, Example.Mailer, adapter: Swoosh.Adapters.Local
+config :app, App.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
-  example: [
+  app: [
     args:
       ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
@@ -49,7 +49,7 @@ config :esbuild,
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "4.3.3",
-  example: [
+  app: [
     args: ~w(
       --input=assets/css/app.css
       --output=priv/static/assets/css/app.css

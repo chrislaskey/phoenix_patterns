@@ -1,4 +1,4 @@
-defmodule Example.Data.Context do
+defmodule App.Data.Context do
   @moduledoc """
   Common implementation for context functions. All database operations must go
   through the core Data contexts, so only universal logic that must always
@@ -27,7 +27,7 @@ defmodule Example.Data.Context do
   joining by any association defined in the schema. Joins can be referenced in
   other parts of the code, for example in a filter:
 
-    use Example.Data.Context, joins: [:users], #...
+    use App.Data.Context, joins: [:users], #...
 
     def filter(query, :user_id, value) do
       Ecto.Query.where(query, [users: users], users.id == ^value)
@@ -36,7 +36,7 @@ defmodule Example.Data.Context do
   Custom `join` functions can also be defined for more complex associations not
   defined in the schema:
 
-    use Example.Data.Context, joins: [:world], # ...
+    use App.Data.Context, joins: [:world], # ...
 
     def join(query, :world), do:
       query
@@ -93,47 +93,47 @@ defmodule Example.Data.Context do
 
   defmacro __using__(opts \\ []) do
     quote do
-      @behaviour Example.Data.Context
+      @behaviour App.Data.Context
 
       # List
 
       def list(options \\ []) do
         schema()
-        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
-        |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
-        |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
-        |> Example.Data.Helpers.Contexts.sorts(sorts(), options, &sort/3)
-        |> Example.Repo.all()
+        |> App.Data.Helpers.Contexts.joins(joins(), options, &join/2)
+        |> App.Data.Helpers.Contexts.preloads(preloads(), options)
+        |> App.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
+        |> App.Data.Helpers.Contexts.sorts(sorts(), options, &sort/3)
+        |> App.Repo.all()
       end
 
       def join(query, name) do
-        Example.Data.Helpers.Contexts.join_by_any_schema_association(query, name)
+        App.Data.Helpers.Contexts.join_by_any_schema_association(query, name)
       end
 
       def filter(query, key, value) do
-        Example.Data.Helpers.Contexts.filter_by_any_schema_fields(query, key, value)
+        App.Data.Helpers.Contexts.filter_by_any_schema_fields(query, key, value)
       end
 
       def sort(query, direction, field) do
-        Example.Data.Helpers.Contexts.sort_by_any_schema_fields(query, direction, field)
+        App.Data.Helpers.Contexts.sort_by_any_schema_fields(query, direction, field)
       end
 
       # Get/fetch
 
       def get(id, options \\ []) do
         schema()
-        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
-        |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
-        |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
-        |> Example.Repo.get(id)
+        |> App.Data.Helpers.Contexts.joins(joins(), options, &join/2)
+        |> App.Data.Helpers.Contexts.preloads(preloads(), options)
+        |> App.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
+        |> App.Repo.get(id)
       end
 
       def get_by(values, options \\ []) do
         schema()
-        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
-        |> Example.Data.Helpers.Contexts.preloads(preloads(), options)
-        |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
-        |> Example.Repo.get_by(values)
+        |> App.Data.Helpers.Contexts.joins(joins(), options, &join/2)
+        |> App.Data.Helpers.Contexts.preloads(preloads(), options)
+        |> App.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
+        |> App.Repo.get_by(values)
       end
 
       def fetch(id, options \\ []) do
@@ -153,7 +153,7 @@ defmodule Example.Data.Context do
       # Change
 
       def change(record, params \\ %{}, options \\ []) do
-        Example.Data.Helpers.Contexts.changeset(schema(), record, params, options)
+        App.Data.Helpers.Contexts.changeset(schema(), record, params, options)
       end
 
       # Create
@@ -162,7 +162,7 @@ defmodule Example.Data.Context do
         schema()
         |> struct()
         |> change(params, options)
-        |> Example.Repo.insert()
+        |> App.Repo.insert()
       end
 
       # Update
@@ -170,7 +170,7 @@ defmodule Example.Data.Context do
       def update(record, params, options \\ []) do
         record
         |> change(params, options)
-        |> Example.Repo.update()
+        |> App.Repo.update()
       end
 
       # Get or create
@@ -218,7 +218,7 @@ defmodule Example.Data.Context do
       # Delete
 
       def delete(record) when is_map(record) do
-        Example.Repo.delete(record)
+        App.Repo.delete(record)
       end
 
       def delete(id) do
@@ -242,9 +242,9 @@ defmodule Example.Data.Context do
         end
 
         schema()
-        |> Example.Data.Helpers.Contexts.joins(joins(), options, &join/2)
-        |> Example.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
-        |> Example.Repo.delete_all()
+        |> App.Data.Helpers.Contexts.joins(joins(), options, &join/2)
+        |> App.Data.Helpers.Contexts.filters(filters(), options, &filter/3)
+        |> App.Repo.delete_all()
       end
 
       # Macro functions

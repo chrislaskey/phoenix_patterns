@@ -92,9 +92,9 @@ mix app_checks --base feature/parent-branch
 
 | Risk | Examples | Who reviews | Check |
 |---|---|---|---|
-| low | Templates under `lib/example_web/live/`, docs | An automated reviewer | Matches neither list |
+| low | Templates under `lib/app_web/live/`, docs | An automated reviewer | Matches neither list |
 | standard | Contexts, schemas, LiveView modules, tests, migrations | An engineer | `human_review`, a warning |
-| high | `lib/example_web.ex`, `lib/example_web/components/`, `config/`, `mix.exs` | An architect | `architect_review`, a warning |
+| high | `lib/app_web.ex`, `lib/app_web/components/`, `config/`, `mix.exs` | An architect | `architect_review`, a warning |
 | protected | `AGENTS.md`, `CODEOWNERS`, the lint and check config, the checks themselves, the CI workflows that enforce this | An architect | `separate_pr`, an error: must be the only change in the pull request |
 
 ## Adopting this pattern
@@ -102,13 +102,13 @@ mix app_checks --base feature/parent-branch
 1. Adopt the [Code Linting](code-linting.md) pattern first. The three
    review checks are built into the library it installs.
 2. Edit the `separate_pr`, `architect_review` and `human_review` entries
-   in `.app_checks.exs`. Start from the one here and rename `example`.
+   in `.app_checks.exs`. Start from the one here and rename `app`.
    List every path that needs an engineer under `human_review`, since a
    path that matches nothing is treated as low-risk.
 3. Run `mix app_checks` on a feature branch and read the lines. Move paths
    between the lists until the warnings match what you would ask for by
    hand.
-4. Copy `.github/CODEOWNERS`, rename `example` and the teams, and turn on
+4. Copy `.github/CODEOWNERS`, rename `app` and the teams, and turn on
    the branch ruleset: one approval, review from code owners, and the
    `mix check` status check required.
 5. Copy `.github/workflows/protected-check.yml`. Nothing in it is named

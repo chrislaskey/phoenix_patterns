@@ -43,9 +43,9 @@ string mentions `<button>` on line 24 and a template uses one on line 134,
 and a page template uses a raw `<input>`:
 
 ```
-lib/example_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from ExampleWeb.CoreComponents [core_component_tags, error]
-lib/example_web/controllers/page_html/home.html.heex:12: <input> is a raw tag, use <.input> from ExampleWeb.CoreComponents [core_component_tags, error]
-lib/example_web/components/layouts.ex: ask an architect to review this change [architect_review, warning]
+lib/app_web/components/layouts.ex:134: <button> is a raw tag, use <.button> from AppWeb.CoreComponents [core_component_tags, error]
+lib/app_web/controllers/page_html/home.html.heex:12: <input> is a raw tag, use <.input> from AppWeb.CoreComponents [core_component_tags, error]
+lib/app_web/components/layouts.ex: ask an architect to review this change [architect_review, warning]
 4 check(s), 2 error(s), 1 warning(s)
 ```
 
@@ -99,7 +99,7 @@ The one here is a complete example with every built-in check. In short:
       base_ref: "origin/main",
       checks: [
         enabled: [
-          {:core_component_tags, config: [paths: ["lib/example_web/components/core_components.ex"]]},
+          {:core_component_tags, config: [paths: ["lib/app_web/components/core_components.ex"]]},
           {:no_io_inspect, level: :warning, scope: :changed},
           {:separate_pr, config: [groups: [agents: ["AGENTS.md"]]]}
         ],

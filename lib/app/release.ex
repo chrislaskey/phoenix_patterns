@@ -1,9 +1,9 @@
-defmodule Example.Release do
+defmodule App.Release do
   @moduledoc """
   Used for executing DB release tasks when run in production without Mix
   installed.
   """
-  @app :example
+  @app :app
 
   def migrate do
     load_app()

@@ -29,8 +29,7 @@
           # instead of `<input>`. The tags are read from the modules, so adding
           # `def p` there is all it takes to start requiring `<.p>`. A new
           # application has nothing old to tolerate, so every file counts
-          {:core_component_tags,
-           config: [paths: ["lib/example_web/components/core_components.ex"]]},
+          {:core_component_tags, config: [paths: ["lib/app_web/components/core_components.ex"]]},
 
           # Files that decide what gets checked or who reviews. A pull request
           # that changes a file in a group may change other files in the same
@@ -55,11 +54,11 @@
            level: :warning,
            config: [
              paths: [
-               "lib/example_web.ex",
-               "lib/example_web/components/**",
-               "lib/example_web/router.ex",
-               "lib/example_web/endpoint.ex",
-               "lib/example/application.ex",
+               "lib/app_web.ex",
+               "lib/app_web/components/**",
+               "lib/app_web/router.ex",
+               "lib/app_web/endpoint.ex",
+               "lib/app/application.ex",
                "priv/code_generators/**",
                "config/**",
                "mix.exs",
@@ -82,8 +81,8 @@
            level: :warning,
            config: [
              paths: [
-               "lib/example/**",
-               "lib/example_web/**/*.ex",
+               "lib/app/**",
+               "lib/app_web/**/*.ex",
                "priv/repo/**",
                "priv/gettext/**",
                "test/**",

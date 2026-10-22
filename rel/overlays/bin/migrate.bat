@@ -1,1 +1,1 @@
-call "%~dp0\example" eval Example.Release.migrate
+call "%~dp0\app" eval App.Release.migrate

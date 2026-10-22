@@ -1,4 +1,4 @@
-defmodule Example.Application do
+defmodule App.Application do
   # See https://elixir.hexdocs.pm/Application.html
   # for more information on OTP Applications
   @moduledoc false
@@ -8,21 +8,20 @@ defmodule Example.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      ExampleWeb.Telemetry,
-      Example.Repo,
-      {Ecto.Migrator,
-       repos: Application.fetch_env!(:example, :ecto_repos), skip: skip_migrations?()},
-      {DNSCluster, query: Application.get_env(:example, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: Example.PubSub},
-      # Start a worker by calling: Example.Worker.start_link(arg)
-      # {Example.Worker, arg},
+      AppWeb.Telemetry,
+      App.Repo,
+      {Ecto.Migrator, repos: Application.fetch_env!(:app, :ecto_repos), skip: skip_migrations?()},
+      {DNSCluster, query: Application.get_env(:app, :dns_cluster_query) || :ignore},
+      {Phoenix.PubSub, name: App.PubSub},
+      # Start a worker by calling: App.Worker.start_link(arg)
+      # {App.Worker, arg},
       # Start to serve requests, typically the last entry
-      ExampleWeb.Endpoint
+      AppWeb.Endpoint
     ]
 
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Example.Supervisor]
+    opts = [strategy: :one_for_one, name: App.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
@@ -30,7 +29,7 @@ defmodule Example.Application do
   # whenever the application is updated.
   @impl true
   def config_change(changed, _new, removed) do
-    ExampleWeb.Endpoint.config_change(changed, removed)
+    AppWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 
