@@ -1,34 +1,52 @@
 #!/usr/bin/env bash
 #
-# Finish the work in a git worktree, such as one made by
-# `claude --worktree NAME --tmux`.
+# Finish the work in a git worktree
 #
-# Usage: bin/worktree merge   # merge this branch into the local main, then
-#                             # remove the worktree, delete the branch and
-#                             # close the worktree's tmux session
-#        bin/worktree close   # remove the worktree and close its tmux
-#                             # session, keeping the branch
-#
-# Run it from inside the worktree, also from inside its tmux session: the
-# session is closed last, so everything else is done by then. Nothing is
-# pushed. The merge is a fast-forward only, so main never gets a merge commit
-# or a conflict. When main has moved on, rebase the branch onto it first.
-#
-# After `close` the branch is an ordinary branch, as if no worktree had been
-# used: `git switch` to it in the main checkout to carry on. Uncommitted
-# changes would be lost, so both commands refuse when there are any. Ignored
-# files in the worktree, such as _build and deps, are deleted with it.
-#
-# The tmux session is closed only when its name is the one `claude --tmux`
-# gives it, `<repository folder>_<branch>`, so running this from any other
-# session leaves that session alone.
+# Run `bin/worktree --help` for the commands and what each one does.
 
 set -euo pipefail
 
 main_branch="main"
 
+help() {
+  cat <<EOF
+Finish the work in a git worktree, however it was made. Run it from inside the worktree.
+
+Usage: $0 COMMAND
+
+Commands:
+  merge    Merge this branch into the local $main_branch, then remove the
+           worktree, delete the branch and close the worktree's tmux session.
+           A fast-forward only, so $main_branch never gets a merge commit or a
+           conflict. When $main_branch has moved on, run \`git rebase $main_branch\`
+           in the worktree first.
+
+  close    Remove the worktree and close its tmux session, keeping the
+           branch. It is then an ordinary branch, as if no worktree had been
+           used: \`git switch BRANCH\` in the main checkout to carry on.
+
+  help     Show this help. Also -h and --help.
+
+Both commands:
+  - push nothing.
+  - refuse when the worktree has uncommitted changes, which would be lost.
+    Ignored files in the worktree, such as _build and deps, are deleted
+    with it.
+  - close the tmux session they run in when that session was started in
+    the worktree. Any other session stays open, whatever its name. Outside tmux
+    there is nothing to close.
+  - work from inside that session. It is closed last, so everything else
+    is done by then, and it ends whatever runs in it.
+
+Examples:
+  $0 merge    # the work is done, put it on $main_branch
+  $0 close    # put the work aside on its branch for later
+EOF
+}
+
 usage() {
-  echo "Usage: $0 {merge|close}" >&2
+  echo "Usage: $0 {merge|close|help}" >&2
+  echo "Run \`$0 --help\` for what each command does." >&2
   exit 1
 }
 
@@ -40,9 +58,10 @@ fail() {
 # Reads the worktree, its main checkout and its branch, and refuses anything
 # that is not a clean worktree on a branch of its own.
 read_worktree() {
-  worktree=$(git rev-parse --show-toplevel)
+  worktree=$(cd "$(git rev-parse --show-toplevel)" && pwd -P)
   # The first worktree listed is the main checkout.
   main_checkout=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -n 1)
+  main_checkout=$(cd "$main_checkout" && pwd -P)
   branch=$(git branch --show-current)
 
   [[ "$worktree" != "$main_checkout" ]] ||
@@ -51,6 +70,8 @@ read_worktree() {
   [[ "$branch" != "$main_branch" ]] || fail "the worktree is on $main_branch itself"
   [[ -z "$(git status --porcelain)" ]] ||
     fail "$worktree has uncommitted changes, commit or remove them first"
+
+  find_tmux_session
 }
 
 remove_worktree() {
@@ -61,20 +82,35 @@ remove_worktree() {
   git worktree remove "$worktree"
 }
 
-# Closes the tmux session this runs in when it is the worktree's, last, since
-# it ends everything running in the session, this script included.
-close_tmux_session() {
-  local session
+# Sets session to the tmux session this runs in when it was started in the
+# worktree or a folder inside it, whatever made it, and to nothing otherwise.
+# Read before the worktree is removed, while its folder can still be resolved.
+find_tmux_session() {
+  local name start
 
+  session=""
   [[ -n "${TMUX:-}" ]] || return 0
 
-  session=$(tmux display-message -p '#S')
-  if [[ "$session" == "$(basename "$main_checkout")_$branch" ]]; then
-    echo "Closing the tmux session $session"
-    tmux kill-session -t "$session"
+  name=$(tmux display-message -p '#S')
+  # With symlinks resolved, as the worktree is, since git and tmux may name a
+  # folder differently, as /var and /private/var on macOS.
+  start=$(tmux display-message -p '#{session_path}')
+  start=$(cd "$start" 2>/dev/null && pwd -P) || true
+
+  if [[ "$start" == "$worktree" || "$start" == "$worktree"/* ]]; then
+    session="$name"
   else
-    echo "Leaving the tmux session $session open, it is not this worktree's"
+    echo "Will leave the tmux session $name open, it was started in $start"
   fi
+}
+
+# Called last, since it ends everything running in the session, this script
+# included.
+close_tmux_session() {
+  [[ -n "$session" ]] || return 0
+
+  echo "Closing the tmux session $session"
+  tmux kill-session -t "$session"
 }
 
 merge() {
@@ -104,5 +140,6 @@ close() {
 case "${1:-}" in
   merge) merge ;;
   close) close ;;
+  help | -h | --help) help ;;
   *) usage ;;
 esac

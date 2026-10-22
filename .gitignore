@@ -44,3 +44,6 @@ npm-debug.log
 /docker/*.env
 
 .claude
+
+# Git worktrees made by other tools, kept in the repository root
+/.worktrees/
