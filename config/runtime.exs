@@ -65,6 +65,23 @@ if config_env() == :prod do
     ],
     secret_key_base: env!("SECRET_KEY_BASE", :string!)
 
+  # Burrito sets __BURRITO=1 when the app runs from a standalone binary
+  # (`mix release app_standalone`). The binary is meant to be started by a
+  # desktop app on the same machine, so it always serves, listens on the
+  # loopback interface only, and builds plain http URLs for its own port.
+  if env!("__BURRITO", :boolean, false) do
+    config :app, App.Web.Endpoint,
+      server: true,
+      url: [
+        host: env!("PHX_HOST", :string!, "localhost"),
+        port: env!("PORT", :integer, 4000),
+        scheme: "http"
+      ],
+      http: [ip: {127, 0, 0, 1}]
+
+    config :app, :exit_on_stdin_close, env!("EXIT_ON_STDIN_CLOSE", :boolean, false)
+  end
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key

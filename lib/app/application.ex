@@ -9,6 +9,7 @@ defmodule App.Application do
   def start(_type, _args) do
     children = [
       App.Web.Telemetry,
+      App.StdinWatcher,
       App.Repo,
       {Ecto.Migrator, repos: Application.fetch_env!(:app, :ecto_repos), skip: skip_migrations?()},
       {DNSCluster, query: Application.get_env(:app, :dns_cluster_query) || :ignore},
@@ -34,7 +35,9 @@ defmodule App.Application do
   end
 
   defp skip_migrations? do
-    # By default, sqlite migrations are run when using a release
-    System.get_env("RELEASE_NAME") == nil
+    # By default, sqlite migrations are run when using a release. A Burrito
+    # binary starts the release without its start script, so RELEASE_NAME is
+    # not set there and __BURRITO is instead.
+    System.get_env("RELEASE_NAME") == nil and System.get_env("__BURRITO") == nil
   end
 end

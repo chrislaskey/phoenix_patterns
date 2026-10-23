@@ -11,7 +11,9 @@ defmodule App.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      default_release: :app,
+      releases: releases()
     ]
   end
 
@@ -81,7 +83,29 @@ defmodule App.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.17", only: [:dev, :test], runtime: false},
       {:app_checks, github: "chrislaskey/app_checks", only: [:dev, :test], runtime: false},
-      {:igniter, "~> 0.8", only: [:dev, :test]}
+      {:igniter, "~> 0.8", only: [:dev, :test]},
+      {:burrito, "~> 1.6", runtime: false}
+    ]
+  end
+
+  # `mix release` builds the regular `app` release used by the Docker image.
+  # `mix release app_standalone` wraps the same release into one executable
+  # per target with Burrito, written to burrito_out/. See
+  # docs/guides/standalone-binary.md.
+  defp releases do
+    [
+      app: [],
+      app_standalone: [
+        steps: [:assemble, &Burrito.wrap/1],
+        burrito: [
+          targets: [
+            macos_silicon: [os: :darwin, cpu: :aarch64],
+            macos_intel: [os: :darwin, cpu: :x86_64],
+            linux: [os: :linux, cpu: :x86_64],
+            linux_arm: [os: :linux, cpu: :aarch64]
+          ]
+        ]
+      ]
     ]
   end
 
