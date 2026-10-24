@@ -23,6 +23,16 @@ This is a web application written using the Phoenix web framework.
 - A generator refuses to overwrite and changes nothing when the module or function already exists. Treat that as a sign the code exists, not as something to work around
 - To add a generator, follow `priv/code_generators/README.md`
 
+### Svelte mirrors of function components
+
+- A function component marked `@svelte true` has a generated `<PascalName>.svelte` copy in the same folder, used by the desktop and mobile apps. The web app keeps rendering the HEEx
+- **Always** run `mix app.svelte` after changing a marked component, and commit the `.svelte` file with it. `mix test` fails while a file is out of date with its component
+- **Never** edit a generated `.svelte` file instead of its component. When the generator can't mirror a template, or mirrors it wrong, edit the `.svelte` file by hand to match and run `mix app.svelte --accept PATH`
+- A marked component is generated when its whole body is one `~H` template using the HEEx listed in `priv/svelte/README.md`. `mix app.svelte` reports anything else in the template with its file and line
+- A marked component with logic before its template or more than one clause, like `button/1`, has a `.svelte` file written by hand instead. After changing the component, update that file to match and run `mix app.svelte --accept PATH`
+- `phx-click`, `phx-submit` and `phx-change` become `emit(name, payload, event)` calls, which each app handles itself. `phx-click={JS.dispatch(...)}` dispatches the same DOM event LiveView would. Other `phx-*` attributes and `JS` commands aren't supported
+- Read `mix help app.svelte` before marking a component for the first time
+
 ### Phoenix v1.8 guidelines
 
 - **Always** begin your LiveView templates with `<Layouts.app flash={@flash} ...>` which wraps all inner content

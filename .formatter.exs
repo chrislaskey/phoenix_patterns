@@ -6,7 +6,8 @@
     "*.{heex,ex,exs}",
     "{config,lib,test}/**/*.{heex,ex,exs}",
     "priv/*/seeds.exs",
-    "priv/code_generators/*.ex"
+    "priv/code_generators/*.ex",
+    "priv/svelte/**/*.ex"
   ],
   line_length: 110,
   heex_line_length: 110

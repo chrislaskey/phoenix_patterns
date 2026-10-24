@@ -35,9 +35,10 @@ defmodule App.MixProject do
 
   # Specifies which paths to compile per environment.
   # The code generators in priv/code_generators are Mix tasks that need the
-  # igniter dependency, which is only present in dev and test.
-  defp elixirc_paths(:test), do: ["lib", "test/support", "priv/code_generators"]
-  defp elixirc_paths(:dev), do: ["lib", "priv/code_generators"]
+  # igniter dependency, which is only present in dev and test. The Svelte
+  # mirroring in priv/svelte is a dev tool too, see priv/svelte/README.md.
+  defp elixirc_paths(:test), do: ["lib", "test/support", "priv/code_generators", "priv/svelte"]
+  defp elixirc_paths(:dev), do: ["lib", "priv/code_generators", "priv/svelte"]
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.
