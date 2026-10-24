@@ -79,6 +79,10 @@ defmodule App.Web do
 
   defp html_helpers do
     quote do
+      # Marks a function component to mirror into a .svelte file, see
+      # `mix help app.svelte`
+      Module.register_attribute(__MODULE__, :svelte, accumulate: true)
+
       # Translation
       use Gettext, backend: App.Web.Gettext
 

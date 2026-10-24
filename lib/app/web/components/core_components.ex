@@ -29,6 +29,10 @@ defmodule App.Web.CoreComponents do
   use Phoenix.Component
   use Gettext, backend: App.Web.Gettext
 
+  # Marks a function component to mirror into a .svelte file, see
+  # `mix help app.svelte`
+  Module.register_attribute(__MODULE__, :svelte, accumulate: true)
+
   alias Phoenix.LiveView.JS
 
   @doc """
@@ -95,6 +99,7 @@ defmodule App.Web.CoreComponents do
       <.button phx-click="go" variant="primary">Send!</.button>
       <.button navigate={~p"/"}>Home</.button>
   """
+  @svelte true
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
   attr :class, :any
   attr :variant, :string, values: ~w(primary)
@@ -303,6 +308,9 @@ defmodule App.Web.CoreComponents do
   end
 
   # Helper used by inputs to generate form errors
+  @svelte true
+  slot :inner_block
+
   defp error(assigns) do
     ~H"""
     <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
@@ -315,6 +323,7 @@ defmodule App.Web.CoreComponents do
   @doc """
   Renders a header with title.
   """
+  @svelte true
   slot :inner_block, required: true
   slot :subtitle
   slot :actions
@@ -443,6 +452,7 @@ defmodule App.Web.CoreComponents do
       <.icon name="hero-x-mark" />
       <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
   """
+  @svelte true
   attr :name, :string, required: true
   attr :class, :any, default: "size-4"
 

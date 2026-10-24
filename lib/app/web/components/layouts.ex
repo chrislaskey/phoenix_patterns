@@ -121,11 +121,34 @@ defmodule App.Web.Layouts do
     """
   end
 
+  # Read at compile time, and recompiled when the file changes, so the
+  # script is written inline and runs before the first paint. The desktop app
+  # inlines the same file, see the comment at its top
+  @theme_script_path Path.expand("../../../../assets/js/theme_script.js", __DIR__)
+  @external_resource @theme_script_path
+  @theme_script File.read!(@theme_script_path)
+
+  @doc """
+  Writes the theme script from `assets/js/theme_script.js` inline, for the
+  `<head>` of root.html.heex. It applies the saved theme before the page
+  paints and listens for the theme toggle's `phx:set-theme` events.
+  """
+  def theme_script(assigns) do
+    assigns = assign(assigns, :script, Phoenix.HTML.raw(@theme_script))
+
+    ~H"""
+    <script>
+      <%= @script %>
+    </script>
+    """
+  end
+
   @doc """
   Provides dark vs light theme toggle based on themes defined in app.css.
 
   See <head> in root.html.heex which applies the theme before page load.
   """
+  @svelte true
   def theme_toggle(assigns) do
     ~H"""
     <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">

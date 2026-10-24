@@ -60,6 +60,9 @@ RUN mix assets.setup
 
 COPY priv priv
 COPY lib lib
+# App.Web.Layouts inlines this script at compile time. The rest of assets
+# comes after compiling, so changing it doesn't recompile the app.
+COPY assets/js/theme_script.js assets/js/
 
 RUN mix compile
 
